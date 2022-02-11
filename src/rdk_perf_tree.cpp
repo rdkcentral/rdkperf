@@ -1,22 +1,20 @@
-/*
- * If not stated otherwise in this file or this component's LICENSE file the
- * following copyright and licenses apply:
- *
- * Copyright 2019 RDK Management
- *
- * Licensed under the Apache License, Version 2.0 (the License);
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/**
+* Copyright 2021 Comcast Cable Communications Management, LLC
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+* SPDX-License-Identifier: Apache-2.0
 */
-
 
 #include <stdint.h>
 #include <stdio.h>
@@ -36,6 +34,7 @@ PerfTree::PerfTree()
 }
 PerfTree::~PerfTree()
 {
+    LOG(eWarning, "Deleting Tree %s\n", m_ThreadName);
     delete m_rootNode;
 
     return;
@@ -57,7 +56,8 @@ void PerfTree::AddNode(PerfNode * pNode)
         m_idThread = pthread_self();
         pthread_getname_np(m_idThread, m_ThreadName, THREAD_NAMELEN);
         pTop = m_activeNode.top();
-        LOG(eWarning, "Creating new Tree stack size = %d\n", m_activeNode.size());
+        LOG(eWarning, "Creating new Tree stack size = %d for node %s, thread name %s\n", 
+            m_activeNode.size(), pNode->GetName().c_str(), m_ThreadName);        
     }
     pTreeNode = pTop->AddChild(pNode);
     m_activeNode.push(pTreeNode);
@@ -66,6 +66,21 @@ void PerfTree::AddNode(PerfNode * pNode)
     pNode->SetTree(this);
 
     return;
+}
+
+bool PerfTree::IsInactive()
+{
+    bool retVal = false;
+
+    if(m_ActivityCount == m_CountAtLastReport) {
+        // No new open nodes since last report
+        if(m_activeNode.top() == m_rootNode) {
+            // AND there are no open nodes on the stack 
+            retVal = true;
+        }
+    }
+
+    return retVal;
 }
 
 void PerfTree::CloseActiveNode(PerfNode * pTreeNode)

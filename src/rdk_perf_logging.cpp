@@ -1,36 +1,38 @@
-/*
- * If not stated otherwise in this file or this component's LICENSE file the
- * following copyright and licenses apply:
- *
- * Copyright 2019 RDK Management
- *
- * Licensed under the Apache License, Version 2.0 (the License);
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/**
+* Copyright 2022 Comcast Cable Communications Management, LLC
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+* SPDX-License-Identifier: Apache-2.0
 */
 
 #include "rdk_perf_logging.h"
+#include "rdk_perf_scopedlock.h"
 
 #include <unistd.h> // for getipd()
+#include <pthread.h>
 
-static bool s_VerboseLog = true;
+static bool s_VerboseLog = false;
 void RDKPerfLogging(eLogLevel level, const char* function, int line, const char * format, ...)
 {    
-#define LOG_MESSAGE_SIZE 4096
     char logMessage[LOG_MESSAGE_SIZE];
 
     if(s_VerboseLog == false && level < eWarning) {
         // No logging
         return;
     }
+
+    SCOPED_LOCK();
 
     // Generate the log string
     va_list ap;
@@ -44,36 +46,9 @@ void RDKPerfLogging(eLogLevel level, const char* function, int line, const char 
     }
 
     // printf for now.
-    fprintf(fpOut, "Process ID %X : %s(%d) : %s", getpid(), function, line, logMessage);
-    // fprintf(fpOut, "%s(%d) : %s", function, line, logMessage);
+    fprintf(fpOut, "Process ID %X : Thread ID %X : %s(%d) : %s", getpid(), (uint32_t)pthread_self(), function, line, logMessage);
     fflush(fpOut);
     return;
-}
-
-#define BUF_SIZE 8192
-void DebugBinaryData(char* szName, uint8_t* pData, size_t nSize)
-{
-    size_t     idx     = 0;
-    uint8_t    buffer[BUF_SIZE];
-    uint8_t*   ptr     = buffer;
-
-    size_t bufAvail = (BUF_SIZE/4 - strlen(szName));
-    if(nSize > bufAvail) {
-        nSize = bufAvail;
-        LOG(eTrace, "Size truncated to %d\n", nSize);
-    }
-
-    sprintf((char*)ptr, "%s", (char*)szName);
-    ptr += strlen(szName);
-    while(idx < nSize) {
-        if(idx % 16 == 0) sprintf((char*)(ptr++), "\n");
-        sprintf((char*)ptr, "%02X ", pData[idx]);
-        ptr +=3;
-        idx++;
-    }
-    sprintf((char*)(ptr++), "\n");
-
-    LOG(eTrace, "%s", buffer);
 }
 
 static void __attribute__((constructor)) LogModuleInit();

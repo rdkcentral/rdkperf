@@ -17,8 +17,8 @@
 */
 
 
-#ifndef __RDK_PERF_NODE_H__
-#define __RDK_PERF_NODE_H__
+#ifndef __RDK_PERF_RECORD_H__
+#define __RDK_PERF_RECORD_H__
 
 #include <stdint.h>
 #include <stdio.h>
@@ -53,15 +53,14 @@ typedef struct _TimingStats
 // Forward decls
 class PerfTree
 ;
-class PerfNode
+class PerfRecord
 {
 public:
-    PerfNode(); // For root node
-    PerfNode(PerfNode* pNode);
-    PerfNode(std::string elementName);
-    ~PerfNode();
+    PerfRecord(); // For root node
+    PerfRecord(std::string elementName);
+    ~PerfRecord();
     
-    PerfNode* AddChild(PerfNode * pNode);
+    PerfRecord* AddChild(PerfRecord * pRecord);
     static uint64_t TimeStamp();
 
     std::string& GetName() { return m_elementName; };
@@ -78,10 +77,9 @@ private:
     std::string             m_elementName;
     TimingStats             m_stats;
     uint64_t                m_startTime;
-    PerfNode*               m_nodeInTree;
     PerfTree*               m_Tree;
     int32_t                 m_TheshholdInUS;
-    std::map<std::string, PerfNode*>    m_childNodes;
+    std::map<std::string, PerfRecord*>    m_childRecords;
 };
 
-#endif // __RDK_PERF_NODE_H__
+#endif // __RDK_PERF_RECORD_H__

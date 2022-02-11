@@ -16,27 +16,27 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 
-#ifndef __RDK_PERF_LOGGING_H__
-#define __RDK_PERF_LOGGING_H__
-
 #include <stdio.h>
-#include <string.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
+#include <stdint.h>
+#include <errno.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <pthread.h>
 
-#define LOG(level, ...) RDKPerfLogging(level, __FUNCTION__, __LINE__, __VA_ARGS__)
-typedef enum eLogLevel_
-{
-    eTrace,
-    eWarning,
-    eError
-} eLogLevel;
+#include "rdk_perf.h"
+#include "rdk_perf_logging.h"
 
-#define LOG_MESSAGE_SIZE 4096
+int main(int argc, char *argv[])
+{    
+    LOG(eWarning, "Enter perfservice app %s\n", __DATE__);
 
-void RDKPerfLogging(eLogLevel level, const char* function, int line, const char * format, ...);
-void DebugBinaryData(char* szName, uint8_t* pData, size_t nSize);
+    sleep(120);
 
-#endif // __RDK_PERF_LOGGING_H__
+    LOG(eWarning, "Exit perfservice app %s\n", __DATE__);
+
+    return 0;
+}
 

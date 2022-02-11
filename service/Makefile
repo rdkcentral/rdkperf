@@ -36,7 +36,7 @@ LD_FLAGS = \
 
 LD_FLAGS += -L$(PWD)/../src -lperftool
 
-NAME = perftest
+NAME = perfservice
 
 SRC_DIRS = .
 

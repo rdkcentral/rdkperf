@@ -23,13 +23,18 @@
 #include <dlfcn.h>
 #include <unistd.h>
 
+#ifdef NOT_YET
+
 #include "rdk_perf_node.h"
+#include "rdk_perf_record.h"
 #include "rdk_perf_tree.h"
 #include "rdk_perf_process.h"
 #include "rdk_perf_logging.h"
 #include "rdk_perf.h"
 
-PerfNode::PerfNode()
+
+
+PerfRecord::PerfRecord()
 : m_elementName("root_node"), m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
 {
     m_startTime     = TimeStamp();
@@ -40,18 +45,18 @@ PerfNode::PerfNode()
     m_stats.nIntervalMin  = INITIAL_MIN_VALUE;
     m_stats.elementName   = m_elementName;
 
-    // LOG(eWarning, "Creating node for element %s\n", m_elementName.c_str());
+    LOG(eWarning, "Creating node for element %s\n", m_elementName.c_str());
 
     return;
 }
 
-PerfNode::PerfNode(PerfNode* pNode)
+PerfRecord::PerfRecord(PerfRecord* pRecord)
 : m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
 {
-    m_idThread      = pNode->m_idThread;
-    m_elementName   = pNode->m_elementName;
-    m_startTime     = pNode->m_startTime;
-    m_childNodes    = pNode->m_childNodes;
+    m_idThread      = pRecord->m_idThread;
+    m_elementName   = pRecord->m_elementName;
+    m_startTime     = pRecord->m_startTime;
+    m_childRecords    = pRecord->m_childRecords;
 
     memset((void*)&m_stats, 0, sizeof(TimingStats));
     m_stats.nTotalMin     = INITIAL_MIN_VALUE;      // Preset Min values to pickup the inital value
@@ -61,13 +66,13 @@ PerfNode::PerfNode(PerfNode* pNode)
     return;
 }
 
-PerfNode::PerfNode(std::string elementName)
+PerfRecord::PerfRecord(std::string elementName)
 : m_elementName(elementName), m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
 {
     pid_t           pID = getpid();
     PerfProcess*    pProcess = NULL;
 
-    // LOG(eWarning, "Creating node for element %s pid %X\n", m_elementName.c_str(), pID);
+    LOG(eWarning, "Creating node for element %s pid %X\n", m_elementName.c_str(), pID);
     
     // Find thread in process map
     pProcess = RDKPerf_FindProcess(pID);
@@ -94,10 +99,8 @@ PerfNode::PerfNode(std::string elementName)
     return;
 }
 
-PerfNode::~PerfNode()
+PerfRecord::~PerfRecord()
 {
-    // LOG(eWarning, "Deleting Node %s\n", GetName().c_str());
-
     if(m_nodeInTree != NULL) {
         // This is a node in the code
         uint64_t deltaTime = TimeStamp() - m_startTime;
@@ -115,8 +118,8 @@ PerfNode::~PerfNode()
     }
     else {
         // This is a node in the tree and should be cleaned up
-        auto it = m_childNodes.begin();
-        while(it != m_childNodes.end()) {
+        auto it = m_childRecords.begin();
+        while(it != m_childRecords.end()) {
             delete it->second;
             it++;
         }
@@ -124,13 +127,13 @@ PerfNode::~PerfNode()
 
     return;
 }
-PerfNode* PerfNode::AddChild(PerfNode * pNode)
+PerfRecord* PerfRecord::AddChild(PerfRecord * pRecord)
 {
     // Does this node exist in the list of children
-    auto it = m_childNodes.find(pNode->GetName());
-    if(it == m_childNodes.end()) {
+    auto it = m_childRecords.find(pRecord->GetName());
+    if(it == m_childRecords.end()) {
         // new child
-        // Create copy of Node for storage in the tree
+        // Create copy of Record for storage in the tree
         PerfNode* copyNode = new PerfNode(pNode);
         m_childNodes[pNode->GetName()] = copyNode;
         pNode->m_nodeInTree = copyNode;
@@ -142,7 +145,7 @@ PerfNode* PerfNode::AddChild(PerfNode * pNode)
     return pNode->m_nodeInTree;
 }
 
-void PerfNode::IncrementData(uint64_t deltaTime)
+void PerfRecord::IncrementData(uint64_t deltaTime)
 {
     // Increment totals
     m_stats.nLastDelta = deltaTime;
@@ -170,7 +173,7 @@ void PerfNode::IncrementData(uint64_t deltaTime)
     return;
 }
 
-void PerfNode::ResetInterval()
+void PerfRecord::ResetInterval()
 {
     m_stats.nIntervalTime     = 0;
     m_stats.nIntervalAvg      = 0;
@@ -181,7 +184,7 @@ void PerfNode::ResetInterval()
     return;
 }
 
-void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
+void PerfRecord::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
 {
     char buffer[MAX_BUF_SIZE] = { 0 };
     char* ptr = &buffer[0];
@@ -207,8 +210,8 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     LOG(eWarning, "%s\n", buffer);
     
     // Print data for all the children
-    auto it = m_childNodes.begin();
-    while(it != m_childNodes.end()) {
+    auto it = m_childRecords.begin();
+    while(it != m_childRecords.end()) {
         it->second->ReportData(nLevel + 1, bShowOnlyDelta);
         it++;
     }
@@ -220,7 +223,7 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     return;
 }
 
-uint64_t PerfNode::TimeStamp() 
+uint64_t PerfRecord::TimeStamp() 
 {
     struct timeval  timeStamp;
     uint64_t        retVal = 0;
@@ -232,3 +235,5 @@ uint64_t PerfNode::TimeStamp()
 
     return retVal;
 }
+
+#endif // NOT_YET
