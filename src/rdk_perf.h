@@ -57,8 +57,12 @@ public:
     void SetThreshhold(uint32_t nThresholdInUS);
 
 private:
+    uint64_t TimeStamp();
+
     const char* m_szName;
     uint32_t    m_nThresholdInUS;
+    uint64_t    m_StartTime;
+    uint64_t    m_EndTime;
 };
 
 PerfProcess* RDKPerf_FindProcess(pid_t pID);

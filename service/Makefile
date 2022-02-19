@@ -18,7 +18,7 @@
 ##
 
 CXXFLAGS += -Wno-attributes -Wall -g -fpermissive -std=c++1y -fPIC
-EXTRA_LDFLAGS = -Wl,-rpath=../../,-rpath=./ -L./
+CXXFLAGS += $(FEATURE_FLAGS)
 
 CFLAGS = -std=c99 $(CXXFLAGS)
 
@@ -34,13 +34,11 @@ INCLUDES += -I$(PWD)/../src
 LD_FLAGS = \
     -lpthread -lstdc++
 
-LD_FLAGS += -L$(PWD)/../src -lperftool
+LD_FLAGS += -L$(BUILD_DIR) -lperftool
 
 NAME = perfservice
 
 SRC_DIRS = .
-
-BUILD_DIR = build
 
 DIR_CREATE = @mkdir -p $(@D)
 
@@ -57,11 +55,11 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(DIR_CREATE)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-$(NAME): $(OBJS)
+$(BUILD_DIR)/$(NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(pkg-config --libs glib-2.0) -o $@ $(OBJS) $(GLIB_LDFLAGS) $(LD_FLAGS) 
 
 clean:
 	rm -f $(OBJS)
-	rmdir $(BUILD_DIR)
-	rm -f $(NAME)
+	rm -f $(BUILD_DIR)/$(NAME)
+
 

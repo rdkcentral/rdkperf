@@ -18,7 +18,8 @@
 ##
 
 CXXFLAGS += -Wno-attributes -Wall -g -fpermissive -std=c++1y -fPIC
-EXTRA_LDFLAGS = -Wl,-rpath=../../,-rpath=./ -L./
+CXXFLAGS += $(FEATURE_FLAGS)
+
 
 CFLAGS = -std=c99 $(CXXFLAGS)
 
@@ -38,8 +39,6 @@ NAME = libperftool.so
 
 SRC_DIRS = .
 
-BUILD_DIR = build
-
 DIR_CREATE = @mkdir -p $(@D)
 
 # Find all the C and C++ files we want to compile
@@ -47,7 +46,7 @@ SRCS := $(shell find $(SRC_DIRS) -name \*.cpp -or -name \*.c)
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
-%.c.o: %.c
+$(BUILD_DIR)/%.c.o: %.c
 	$(DIR_CREATE)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
@@ -55,11 +54,12 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(DIR_CREATE)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-$(NAME): $(OBJS)
+$(BUILD_DIR)/$(NAME): $(OBJS)
 	$(CC) $(CFLAGS) -shared $(pkg-config --libs glib-2.0) -o $@ $(OBJS) $(GLIB_LDFLAGS) $(LD_FLAGS) 
 
 clean:
 	rm -f $(OBJS)
-	rmdir $(BUILD_DIR)
-	rm -f $(NAME)
+	rm -f $(BUILD_DIR)/$(NAME)
+
+	
 

@@ -17,6 +17,10 @@
 #
 ##
 
+export BUILD_DIR = $(PWD)/build
+
+#export FEATURE_FLAGS = -DPERF_REMOTE
+
 SUBDIRS = src test service
 
 all:
@@ -28,3 +32,4 @@ clean:
 	@for i in $(SUBDIRS); do \
 	echo "Clearing in $$i..."; \
 	(cd $$i; $(MAKE) $(MFLAGS) clean); done
+	rmdir $(BUILD_DIR)

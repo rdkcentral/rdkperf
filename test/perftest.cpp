@@ -29,17 +29,19 @@
 #include "rdk_perf.h"
 #include "rdk_perf_logging.h"
 
-void Func3()
+uint32_t Func3(uint32_t nCount)
 {
     RDKPerf perf(__FUNCTION__);
-    // sleep(1);
+
+    nCount++;
+    return nCount;
 }
 
 void Func2()
 {
     RDKPerf perf(__FUNCTION__);
     for(int nIdx = 0; nIdx < 2; nIdx++) {
-        Func3();
+        Func3(nIdx);
     }
     sleep(1);
 }
@@ -56,14 +58,15 @@ void* task1(void* pData)
 {
     pthread_setname_np(pthread_self(), __FUNCTION__);
     RDKPerf perf(__FUNCTION__);
-    Func1();
+    //Func1();
+
+    RDKPerfRemote perfRemote(__FUNCTION__);
 
     sleep(4);
 
     int nCount = 0;
     while(nCount < MAX_LOOP) {
-        Func3();
-        nCount++;
+        nCount = Func3(nCount);   
     }
     return NULL;
 }
@@ -86,37 +89,37 @@ int main(int argc, char *argv[])
 {    
     LOG(eWarning, "Enter test app %s\n", __DATE__);
 
-    // pid_t child_pid;
-    // //int child_status;
+    pid_t child_pid;
 
-    // child_pid = fork();
-    // if(child_pid == 0) {
-    //     /* This is done by the child process. */
+#ifdef PERF_REMOTE
+    child_pid = fork();
+    if(child_pid == 0) {
+        /* This is done by the child process. */
 
-    //     const char* command = "./service/perfservice";
-    //     const char* args[] = { "./service/perfservice", NULL };
-    //     const char* env[] = { "LD_LIBRARY_PATH=./src", NULL };
+        const char* command     = "./build/perfservice";
+        const char* args[]      = { "./build/perfservice", NULL };
+        const char* env[]       = { "LD_LIBRARY_PATH=./build", NULL };
 
-    //     execvpe(command, args, env);
+        execvpe(command, args, env);
 
-    //     /* If execv returns, it must have failed. */
+        /* If execv returns, it must have failed. */
 
-    //     printf("Unknown command %s\n", command);
-    //     exit(0);
-    // }
+        printf("Unknown command %s\n", command);
+        exit(0);
+    }
     sleep(1);
-
+#endif
     pthread_t threadId1;
     pthread_t threadId2;
 
     LOG(eWarning, "Creating Test threads\n");
 
     pthread_create(&threadId1, NULL, &task1, NULL);
-    pthread_create(&threadId2, NULL, &task2, NULL);
+    //pthread_create(&threadId2, NULL, &task2, NULL);
  
     pthread_join(threadId1, NULL);
-    pthread_join(threadId2, NULL);
+    //pthread_join(threadId2, NULL);
 
-   RDKPerf_ReportProcess(getpid());
+    RDKPerf_ReportProcess(getpid());
 }
 

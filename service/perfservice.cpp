@@ -28,15 +28,63 @@
 
 #include "rdk_perf.h"
 #include "rdk_perf_logging.h"
+#include "rdk_perf_msgqueue.h"
 
+bool HandleMessage(PerfMessage* pMsg)
+{
+    bool retVal = true;
+
+    LOG(eWarning, "Got message of type %d\n", pMsg->type);
+
+    return retVal;
+}
+void RunLoop(PerfMsgQueue* pQueue)
+{
+    bool bContiue = true;
+
+    while(bContiue == true) {
+        PerfMessage msg;
+        // Get Message
+        pQueue->ReceiveMessage(&msg, 5000);
+        if(msg.type == eNoMessage || msg.type == eMaxType) {
+            // Error case
+            //TEST
+            if(msg.type == eExitQueue || msg.type == eMaxType) {
+                // Exit loop
+                bContiue = false;
+            }
+        }
+        else {
+            // Handle message
+            HandleMessage(&msg);
+        }
+    }
+
+    LOG(eWarning, "RunLoop exiting\n");
+    return;
+}
 int main(int argc, char *argv[])
 {    
     LOG(eWarning, "Enter perfservice app %s\n", __DATE__);
 
-    sleep(120);
+    // // Does the queue exist
+    // if(PerfMsgQueue::IsQueueCreated(RDK_PERF_MSG_QUEUE_NAME)) {
+    //     // Queue exists, service is a duplicate
+    //     exit(-1);
+    // }
+
+    // Create Queue
+    PerfMsgQueue* pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, true);
+    if(pQueue != NULL) {
+        // Have Queue, start retrieven messages
+        RunLoop(pQueue);
+
+        // RunLoop exited, cleanup
+        pQueue->Release();
+    }
 
     LOG(eWarning, "Exit perfservice app %s\n", __DATE__);
 
-    return 0;
+    exit(1);
 }
 

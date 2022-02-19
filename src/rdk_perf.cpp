@@ -28,6 +28,7 @@
 
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
+#include "rdk_perf_msgqueue.h"
 #include "rdk_perf.h"
 
 #include <glib.h>
@@ -35,11 +36,15 @@
 
 #define REPORTING_INITIAL_COUNT 5000
 #define REPORTING_INTERVAL_COUNT 20000
-#define TIMER_INTERVAL_SECONDS 1
+#define TIMER_INTERVAL_SECONDS 10
 #define MAX_DELAY 600
 
 
 static std::map<pid_t, PerfProcess*>* sp_ProcessMap;
+
+#ifdef PERF_REMOTE
+static PerfMsgQueue* s_pQueue = NULL;
+#endif // PERF_REMOTE
 
 static void __attribute__((constructor)) PerfModuleInit();
 static void __attribute__((destructor)) PerfModuleTerminate();
@@ -68,15 +73,12 @@ public:
     bool Loop() {
         bool bTimerContinue = true;
  
-        LOG(eWarning, "Timer Callback! m_nCount = %d m_nDelay = %d\n", m_nCount, m_nDelay);
+        LOG(eTrace, "Timer Callback! m_nCount = %d m_nDelay = %d\n", m_nCount, m_nDelay);
 
         // Validate that threads in process are still active
         auto it = m_ProcessMap->find(getpid());
         if(it != m_ProcessMap->end()) {
             // Found a process in the list
-// TEST
-            RDKPerf_ReportProcess(getpid()); return true;
-
             if(m_nCount > m_nDelay) {
                 RDKPerf_ReportProcess(getpid());
                 m_nCount = 0;
@@ -88,7 +90,7 @@ public:
             m_nCount++;
         }
         else {
-            LOG(eError, "Could not find Process ID %X from map of size %d for reporting\n", (uint32_t)getpid(), m_ProcessMap->size());
+            LOG(eTrace, "Could not find Process ID %X from map of size %d for reporting\n", (uint32_t)getpid(), m_ProcessMap->size());
         }
 
         return bTimerContinue;
@@ -99,7 +101,7 @@ public:
         LOG(eWarning, "Task Started\n");
         while(m_bContinue == true) {
             m_bContinue = Loop();
-            LOG(eWarning, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
+            LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
             sleep(TIMER_INTERVAL_SECONDS);
         }
         LOG(eWarning, "Task Completed\n");
@@ -185,6 +187,12 @@ static void PerfModuleTerminate()
         LOG(eError, "Thread does not exist\n"); 
     }
 
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->Release();
+    }
+#endif // PERF_REMOTE
+
     delete sp_ProcessMap;
 }
 
@@ -218,27 +226,68 @@ RDKPerf::~RDKPerf()
 RDKPerfRemote::RDKPerfRemote(const char* szName) 
 : m_szName(szName)
 , m_nThresholdInUS(0)
+, m_EndTime(0)
 {
+    m_StartTime = TimeStamp();
+
     // Send enter event
+#ifdef PERF_REMOTE
+    if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eEntry, m_szName, m_StartTime);
+    }
+#endif // PERF_REMOTE    
     return;
 }
 RDKPerfRemote::RDKPerfRemote(const char* szName, uint32_t nThresholdInUS)
 : m_szName(szName)
 , m_nThresholdInUS(nThresholdInUS)
 {
-    // Send enter event
-    return;
+ 
+    m_EndTime = TimeStamp();
+ 
+     // Send enter event
+ #ifdef PERF_REMOTE
+    if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eEntry, m_szName, nThresholdInUS, m_EndTime);
+    }
+#endif // PERF_REMOTE    
+   return;
 }
 
 void RDKPerfRemote::SetThreshhold(uint32_t nThresholdInUS)
 {
     // Send threshhold event
     m_nThresholdInUS = nThresholdInUS;
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eThreshold, m_szName, m_nThresholdInUS);
+    }
+#endif // PERF_REMOTE    
+}
+
+uint64_t RDKPerfRemote::TimeStamp() 
+{
+    struct timeval  timeStamp;
+    uint64_t        retVal = 0;
+
+    gettimeofday(&timeStamp, NULL);
+
+    // Convert timestamp to Micro Seconds
+    retVal = (uint64_t)(((uint64_t)timeStamp.tv_sec * 1000000) + timeStamp.tv_usec);
+
+    return retVal;
 }
 
 RDKPerfRemote::~RDKPerfRemote()
 {
     // Send close event
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eExit, m_szName);
+    }
+#endif // PERF_REMOTE    
     return;
 }
 //-------------------------------------------
