@@ -25,6 +25,9 @@
 #include "rdk_perf_tree.h"
 #include "rdk_perf_process.h"
 #include "rdk_perf_logging.h"
+#include "rdk_perf_scopedlock.h"
+
+static std::map<pid_t, PerfProcess*>* sp_ProcessMap;
 
 PerfProcess::PerfProcess(pid_t pID)
 : m_idProcess(pID)
@@ -161,9 +164,9 @@ void PerfProcess::ShowTree(PerfTree* pTree)
     LOG(eWarning, "Found Thread %X in tree named %s with stack size %d\n", 
         pTree->GetThreadID(),
         pTree->GetName(),
-        pTree->GetStack().size());
+        pTree->GetStack()->size());
     // Show Stack
-    LOG(eWarning, "Top Node = %p name %s\n", pTree->GetStack().top(), pTree->GetStack().top()->GetName().c_str());
+    LOG(eWarning, "Top Node = %p name %s\n", pTree->GetStack()->top(), pTree->GetStack()->top()->GetName().c_str());
 
     return;
 }
@@ -183,3 +186,75 @@ void PerfProcess::ReportData()
     
     return;
 }
+
+
+//--------------------- Process Map Tools ----------------------
+PerfProcess* RDKPerf_FindProcess(pid_t pID)
+{
+    PerfProcess* retVal = NULL;
+
+    SCOPED_LOCK();
+
+    auto it = sp_ProcessMap->find(pID);
+    if(it != sp_ProcessMap->end()) {
+        retVal = it->second;
+    }
+
+    return retVal;
+}
+void RDKPerf_InsertProcess(pid_t pID, PerfProcess* pProcess)
+{
+    SCOPED_LOCK();
+
+    sp_ProcessMap->insert(std::pair<pid_t, PerfProcess*>(pID, pProcess));
+    LOG(eError, "Process Map %p size %d added entry for PID %X, pProcess %p\n", sp_ProcessMap, sp_ProcessMap->size(), pID, pProcess);
+}
+
+void RDKPerf_RemoveProcess(pid_t pID)
+{
+    SCOPED_LOCK();
+
+    // Find thread in process map
+    auto it = sp_ProcessMap->find(pID);
+    if(it == sp_ProcessMap->end()) {
+        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)pID);
+    }
+    else {
+        LOG(eError, "Process Map size %d found entry for PID %X\n", sp_ProcessMap->size(), it->first);
+        delete it->second;
+        sp_ProcessMap->erase(it);
+    }
+}
+
+void RDKPerf_InitializeMap()
+{
+    if(sp_ProcessMap == NULL) {
+        sp_ProcessMap = new std::map<pid_t, PerfProcess*>();
+        sp_ProcessMap->clear();
+    }
+    else {
+        LOG(eError, "Map already exists\n");
+    }
+}
+
+void RDKPerf_DeleteMap()
+{
+    if(sp_ProcessMap != NULL) {
+        delete sp_ProcessMap;
+        sp_ProcessMap = NULL;
+    }
+    else {
+        LOG(eError, "Can not delete map\n");
+    }
+}
+
+size_t RDKPerf_GetMapSize()
+{
+    if(sp_ProcessMap != NULL) {
+        return sp_ProcessMap->size();
+    }
+    else {
+        return 0;
+    }    
+}
+

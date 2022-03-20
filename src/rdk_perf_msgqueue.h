@@ -38,7 +38,7 @@
 
 #define RDK_PERF_MSG_QUEUE_NAME "/test"
 // #define RDK_PERF_MSG_QUEUE_NAME "/RDKPerfServerQueue"
-#define MAX_NAME_LEN 256
+#define MAX_NAME_LEN 128
 
 typedef enum _MessageType 
 {
@@ -59,8 +59,9 @@ typedef struct _EntryMessage
     pid_t               pID;
     pthread_t           tID;
     char                szName[MAX_NAME_LEN];
+    char                szThreadName[MAX_NAME_LEN];
     uint64_t            nTimeStamp;
-    uint32_t            nThresholdInUS;
+    int32_t             nThresholdInUS;
 } EntryMessage;
 
 typedef struct _ExitMessage 
@@ -76,7 +77,7 @@ typedef struct _ThresholdMessage
     pid_t               pID;
     pthread_t           tID;
     char                szName[MAX_NAME_LEN];
-    uint32_t            nThresholdInUS;
+    int32_t             nThresholdInUS;
 } ThresholdMessage;
 
 typedef struct _ReportThread 
@@ -109,7 +110,7 @@ typedef union _MessageData
     ReportThread        report_thread;
     ReportProcess       report_process;
     CloseThread         close_thread;
-    CloseProcess        close_proces;
+    CloseProcess        close_process;
 } MessageData;
 
 typedef struct _PerfMessage 
@@ -129,9 +130,9 @@ public:
     uint32_t AddRef();
     uint32_t Release();
 
-    bool SendMessage(MessageType type, const char* szName = NULL, uint64_t nTimeStamp = 0, uint32_t nThresholdInUS = 0);
+    bool SendMessage(MessageType type, const char* szName = NULL, uint64_t nTimeStamp = 0, int32_t nThresholdInUS = -1);
     bool SendMessage(PerfMessage* pMsg);
-    bool ReceiveMessage(PerfMessage* pMsg, uint32_t nTimeoutInMS = 0);
+    bool ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS = 0);
 
     static PerfMsgQueue* GetQueue(const char* szQueueName, bool bService);
     static bool IsQueueCreated(const char* szQueueName);

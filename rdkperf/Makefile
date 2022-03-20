@@ -30,13 +30,16 @@ GLIB_LDFLAGS = $(shell pkg-config --libs glib-2.0)
 INCLUDES = -I$(BUILD_SYSROOT)/usr/include/ \
     		$(GLIB_INCLUDE)
 
-INCLUDES += -I$(PWD)/src
+INCLUDES += \
+	-I$(PWD)/../src \
+	-I$(PWD)/../rdkperf
 
 # Libraries to load
-LD_FLAGS = \
-    -lrt -lpthread -lstdc++
+LD_FLAGS = -L$(BUILD_DIR) \
+	-lperftool \
+	-lrt -lpthread -lstdc++
 
-NAME = libperftool.so
+NAME = librdkperf.so
 
 SRC_DIRS = .
 

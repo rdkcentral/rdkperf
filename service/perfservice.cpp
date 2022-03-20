@@ -26,35 +26,258 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "rdk_perf.h"
 #include "rdk_perf_logging.h"
 #include "rdk_perf_msgqueue.h"
+#include "rdk_perf_process.h"
+#include "rdk_perf_tree.h"
+#include "rdk_perf_node.h"
+
+#define MESSAGE_TIMEOUT 10000
+//#define MAX_TIMEOUT 60     // ~ 10 minutes
+#define MAX_TIMEOUT 6     // ~ 1 minutes
+
+PerfTree* GetTree(pid_t pID, pthread_t tID, char* szName, bool bCreate = false) 
+{
+    // Find thread in process map
+    PerfProcess* pProcess = RDKPerf_FindProcess(pID);
+    if(pProcess == NULL) {
+        if(!bCreate) {
+            LOG(eError, "Create not enabled, but process %X not found\n", pID);
+            return NULL;
+        }
+        // no existing PID in map
+        pProcess = new PerfProcess(pID);
+        RDKPerf_InsertProcess(pID, pProcess);
+        LOG(eWarning, "Creating new process element %X for node element %s\n", pProcess, szName);
+    }
+
+    // Found PID get element tree for current thread.
+    PerfTree* pTree = pProcess->GetTree(tID);
+    if(pTree == NULL) {
+        if(bCreate) {
+            pTree = pProcess->NewTree(tID);
+        }
+        else {
+            LOG(eError, "Tree not found %x but create not enabled\n", tID);
+        }
+    }
+
+    return pTree;
+}
+
+bool HandleEntry(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.entry.pID;
+    pthread_t       tID = pMsg->msg_data.entry.tID;
+    char*           szName = pMsg->msg_data.entry.szName;
+    char*           szThreadName = pMsg->msg_data.entry.szThreadName;
+
+    // Handle the node entry message
+    LOG(eTrace, "Creating node for element %s pid %X tid %X\n", 
+                szName, pID, tID);
+    
+    PerfTree* pTree = GetTree(pID, tID, szName, true);
+    
+    if(pTree) { 
+        PerfNode* pNode = pTree->AddNode(szName,
+                                         tID,
+                                         szThreadName,
+                                         pMsg->msg_data.entry.nTimeStamp);
+        if(pMsg->msg_data.entry.nThresholdInUS > 0) {
+            pNode->SetThreshold(pMsg->msg_data.entry.nThresholdInUS);
+        }
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool HandleThreshold(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.threshold.pID;
+    pthread_t       tID = pMsg->msg_data.threshold.tID;
+    char*           szName = pMsg->msg_data.threshold.szName;
+    int32_t         nThreshold = pMsg->msg_data.threshold.nThresholdInUS;
+
+    // Handle the node threshold message
+    LOG(eTrace, "Setting threshold %d node for element %s pid %X tid %X\n", 
+                nThreshold, szName, pID, tID);
+    
+    PerfTree* pTree = GetTree(pID, tID, szName);
+    
+    if(pTree) { 
+        PerfNode* pNode = pTree->GetStack()->top();
+        if(pNode != NULL && nThreshold > 0) {
+            pNode->SetThreshold(nThreshold);
+            retVal = true;
+        }
+    }
+
+    return retVal;
+}
+
+bool HandleExit(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.exit.pID;
+    pthread_t       tID = pMsg->msg_data.exit.tID;
+    char*           szName = pMsg->msg_data.exit.szName;
+
+    // Handle the node exit message
+    LOG(eTrace, "closing node for element %s pid %X tid %X\n", 
+                szName, pID, tID);
+    
+    PerfTree* pTree = GetTree(pID, tID, szName);
+    
+    if(pTree) { 
+        PerfNode* pNode = pTree->GetStack()->top();
+        if(pNode != NULL && 
+            pNode->GetName().compare(szName) == 0) {
+            pNode->IncrementData(pMsg->msg_data.exit.nTimeStamp);
+            pNode->CloseNode();
+            retVal = true;
+        }
+    }
+
+    return retVal;
+}
+
+bool HandleReportThread(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.report_thread.pID;
+    pthread_t       tID = pMsg->msg_data.report_thread.tID;
+
+    // Handle the node exit message
+    LOG(eWarning, "Reporting Thread pid %X tid %X\n", pID, tID);
+    
+    PerfTree* pTree = GetTree(pID, tID, "ReportThread Event");    
+
+    if(pTree != NULL) {
+        LOG(eWarning, "Printing tree report for Task ID %X\n", (uint32_t)tID);
+        pTree->ReportData();
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool HandleReportProcess(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.report_process.pID;
+
+    // Handle the node exit message
+    LOG(eWarning, "Reporting Process pid %X\n", pID);
+    
+    PerfProcess* pProcess = RDKPerf_FindProcess(pID);
+    if(pProcess != NULL) {
+        pProcess->ShowTrees();
+        // Close threads that have no activity since the last report
+        pProcess->CloseInactiveThreads();
+        LOG(eWarning, "Printing process report for process ID %X\n", (uint32_t)pID);
+        pProcess->ReportData();
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool HandleCloseThread(PerfMessage* pMsg)
+{
+    bool            retVal = false;
+    pid_t           pID = pMsg->msg_data.close_thread.pID;
+    pthread_t       tID = pMsg->msg_data.close_thread.tID;
+
+    // Handle the node exit message
+    LOG(eWarning, "Closing Thread pid %X tid %X\n", pID, tID);
+    
+    PerfProcess* pProcess = RDKPerf_FindProcess(pID);
+    if(pProcess != NULL) {
+        retVal = pProcess->RemoveTree(tID);
+    }
+
+    return retVal;
+}
+
+bool HandleCloseProcess(PerfMessage* pMsg)
+{
+    bool            retVal = true;
+    pid_t           pID = pMsg->msg_data.close_process.pID;
+
+    // Handle the node exit message
+    LOG(eWarning, "Closing Process pid %X\n", pID);
+    
+    RDKPerf_RemoveProcess(pID);
+
+    return retVal;
+}
 
 bool HandleMessage(PerfMessage* pMsg)
 {
     bool retVal = true;
 
-    LOG(eWarning, "Got message of type %d\n", pMsg->type);
+    LOG(eTrace, "Got message of type %d\n", pMsg->type);
+    switch(pMsg->type) {
+    case eEntry:
+        retVal = HandleEntry(pMsg);
+        break;
+    case eThreshold:
+        retVal = HandleThreshold(pMsg);
+        break;
+    case eExit:
+        retVal = HandleExit(pMsg);
+        break;
+    case eReportThread:
+        retVal = HandleReportThread(pMsg);
+        break;
+    case eReportProcess:
+        retVal = HandleReportProcess(pMsg);
+        break;
+    case eCloseThread:
+        retVal = HandleCloseThread(pMsg);
+        break;
+    case eCloseProcess:
+        retVal = HandleCloseProcess(pMsg);
+        break;
+    default:
+        LOG(eError, "Unknown Mesage type %d\n", pMsg->type);
+        retVal = false;
+        break;
+    }
 
     return retVal;
 }
 void RunLoop(PerfMsgQueue* pQueue)
 {
-    bool bContiue = true;
+    bool        bContinue       = true;
+    uint32_t    nTimeoutCount   = 0;
 
-    while(bContiue == true) {
+    while(bContinue == true) {
         PerfMessage msg;
         // Get Message
-        pQueue->ReceiveMessage(&msg, 5000);
-        if(msg.type == eNoMessage || msg.type == eMaxType) {
-            // Error case
-            //TEST
-            if(msg.type == eExitQueue || msg.type == eMaxType) {
-                // Exit loop
-                bContiue = false;
+        pQueue->ReceiveMessage(&msg, MESSAGE_TIMEOUT);
+        //TEST
+        if(msg.type == eExitQueue || msg.type == eMaxType) {
+            // Exit loop
+            bContinue = false;
+        }
+        else if(msg.type == eNoMessage) {
+            // Timeout
+            nTimeoutCount++;
+            if(nTimeoutCount > MAX_TIMEOUT) {
+                LOG(eError, "Max number of message timeouts reached exiting\n");
+                bContinue = false;
+            }
+            else {
+                LOG(eWarning, "No message, timeout %d\n", nTimeoutCount);
             }
         }
         else {
+            // Reset Timeout Count
+            nTimeoutCount = 0;
             // Handle message
             HandleMessage(&msg);
         }
@@ -67,11 +290,13 @@ int main(int argc, char *argv[])
 {    
     LOG(eWarning, "Enter perfservice app %s\n", __DATE__);
 
+    RDKPerf_InitializeMap();
+
     // // Does the queue exist
-    // if(PerfMsgQueue::IsQueueCreated(RDK_PERF_MSG_QUEUE_NAME)) {
-    //     // Queue exists, service is a duplicate
-    //     exit(-1);
-    // }
+    if(PerfMsgQueue::IsQueueCreated(RDK_PERF_MSG_QUEUE_NAME)) {
+        // Queue exists, service is a duplicate
+        exit(-1);
+    }
 
     // Create Queue
     PerfMsgQueue* pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, true);
@@ -83,6 +308,7 @@ int main(int argc, char *argv[])
         pQueue->Release();
     }
 
+    RDKPerf_DeleteMap();
     LOG(eWarning, "Exit perfservice app %s\n", __DATE__);
 
     exit(1);

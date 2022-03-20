@@ -31,11 +31,12 @@
 #include <map>
 #include <stack>
 
-
 #define THREAD_NAMELEN 16
 
 // Forward decls
 class PerfNode;
+class PerfRecord;
+typedef struct _PerfMessage PerfMessage;
 
 class PerfTree
 {
@@ -43,13 +44,14 @@ public:
     PerfTree();
     ~PerfTree();
 
-    void AddNode(PerfNode * pNode);
-    void CloseActiveNode(PerfNode * pTreeNode);
+    PerfNode* AddNode(PerfRecord* pRecord);
+    PerfNode* AddNode(char* szName, pthread_t tID, char* szThreadName, uint64_t nStartTime);
+    void CloseActiveNode(PerfNode* pTreeNode);
     void ReportData();
 
     bool IsInactive();
     char * GetName() { return m_ThreadName; };
-    std::stack<PerfNode*> GetStack() { return m_activeNode; }
+    std::stack<PerfNode*>* GetStack() { return &m_activeNode; }
     pthread_t GetThreadID() { return m_idThread; };
 
 private:

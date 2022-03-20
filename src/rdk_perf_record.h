@@ -31,55 +31,35 @@
 #include <map>
 #include <stack>
 
-#define INITIAL_MIN_VALUE 1000000000
 #define MAX_BUF_SIZE 2048
 
-typedef struct _TimingStats
-{
-    std::string         elementName;
-    uint64_t            nTotalTime;
-    double              nTotalAvg;
-    uint64_t            nTotalMax;
-    uint64_t            nTotalMin;
-    uint64_t            nTotalCount;
-    uint64_t            nIntervalTime;
-    double              nIntervalAvg;
-    uint64_t            nIntervalMax;
-    uint64_t            nIntervalMin;
-    uint64_t            nIntervalCount;
-    uint64_t            nLastDelta;
-} TimingStats;
 
 // Forward decls
-class PerfTree
-;
+class PerfTree;
+class PerfNode;
+
 class PerfRecord
 {
 public:
-    PerfRecord(); // For root node
     PerfRecord(std::string elementName);
     ~PerfRecord();
     
-    PerfRecord* AddChild(PerfRecord * pRecord);
     static uint64_t TimeStamp();
 
-    std::string& GetName() { return m_elementName; };
-    void SetTree(PerfTree* pTree) { m_Tree = pTree; };
-    void SetThreshold(uint32_t nUS) { m_TheshholdInUS = (int32_t)nUS; };
-
-    void IncrementData(uint64_t deltaTime);
-    void ResetInterval();
-
-    void ReportData(uint32_t nLevel, bool bShowOnlyDelta = false);
+    std::string&    GetName()                       { return m_elementName; };
+    pthread_t       GetThreadID()                   { return m_idThread; };
+    uint64_t        GetStartTime()                  { return m_startTime; };
+    void            SetThreshold(int32_t nUS)       { m_ThresholdInUS = (int32_t)nUS; };
+    void            SetNodeInTree(PerfNode* pNode)  { m_nodeInTree = pNode; };
+ 
+    void            ReportData(uint32_t nLevel, bool bShowOnlyDelta = false);
 
 private:
     pthread_t               m_idThread;
     std::string             m_elementName;
-    TimingStats             m_stats;
     uint64_t                m_startTime;
-    PerfTree*               m_Tree;
-    int32_t                 m_TheshholdInUS;
-    std::map<std::string, PerfRecord*>    m_childRecords;
+    PerfNode*               m_nodeInTree;
+    int32_t                 m_ThresholdInUS;
 };
 
 #endif // __RDK_PERF_RECORD_H__

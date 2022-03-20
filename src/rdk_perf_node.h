@@ -51,23 +51,26 @@ typedef struct _TimingStats
 } TimingStats;
 
 // Forward decls
-class PerfTree
-;
+class PerfTree;
+class PerfRecord;
 class PerfNode
 {
 public:
     PerfNode(); // For root node
-    PerfNode(PerfNode* pNode);
-    PerfNode(std::string elementName);
+    PerfNode(PerfRecord* pRecord);
+    PerfNode(char* szName, pthread_t tID, uint64_t nStartTime);
     ~PerfNode();
     
-    PerfNode* AddChild(PerfNode * pNode);
+    PerfNode* AddChild(PerfRecord * pNode);
+    PerfNode* AddChild(char* szName, pthread_t tID, uint64_t nStartTime);
     static uint64_t TimeStamp();
 
     std::string& GetName() { return m_elementName; };
+    TimingStats* GetStats() { return &m_stats; };
     void SetTree(PerfTree* pTree) { m_Tree = pTree; };
-    void SetThreshold(uint32_t nUS) { m_TheshholdInUS = (int32_t)nUS; };
+    void SetThreshold(int32_t nThreshold) { m_ThresholdInUS = nThreshold; };
 
+    void CloseNode();
     void IncrementData(uint64_t deltaTime);
     void ResetInterval();
 
@@ -78,9 +81,8 @@ private:
     std::string             m_elementName;
     TimingStats             m_stats;
     uint64_t                m_startTime;
-    PerfNode*               m_nodeInTree;
     PerfTree*               m_Tree;
-    int32_t                 m_TheshholdInUS;
+    int32_t                 m_ThresholdInUS;
     std::map<std::string, PerfNode*>    m_childNodes;
 };
 

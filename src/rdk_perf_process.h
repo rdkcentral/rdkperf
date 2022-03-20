@@ -57,4 +57,12 @@ private:
     std::map<pthread_t, PerfTree*>  m_mapThreads;
 };
 
+PerfProcess* RDKPerf_FindProcess(pid_t pID);
+void RDKPerf_InsertProcess(pid_t pID, PerfProcess* pProcess);
+void RDKPerf_RemoveProcess(pid_t pID);
+void RDKPerf_InitializeMap();
+void RDKPerf_DeleteMap();
+size_t RDKPerf_GetMapSize();
+
+
 #endif // __RDK_PERF_PROCESS_H__

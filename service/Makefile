@@ -16,6 +16,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 ##
+include ../Makefile.Features
 
 CXXFLAGS += -Wno-attributes -Wall -g -fpermissive -std=c++1y -fPIC
 CXXFLAGS += $(FEATURE_FLAGS)
@@ -28,7 +29,9 @@ GLIB_LDFLAGS = $(shell pkg-config --libs glib-2.0)
 INCLUDES = -I$(BUILD_SYSROOT)/usr/include/ \
     		$(GLIB_INCLUDE)
 
-INCLUDES += -I$(PWD)/../src
+INCLUDES += \
+	-I$(PWD)/../src \
+	-I$(PWD)/../rdkperf
 
 # Libraries to load
 LD_FLAGS = \
@@ -47,6 +50,9 @@ SRCS := $(shell find $(SRC_DIRS) -name \*.cpp -or -name \*.c)
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
+ifeq ($(ENABLE_PERF_REMOTE),1)
+# Build only if feature is enabled
+
 $(BUILD_DIR)/%.c.o: %.c
 	$(DIR_CREATE)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -57,6 +63,8 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 
 $(BUILD_DIR)/$(NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(pkg-config --libs glib-2.0) -o $@ $(OBJS) $(GLIB_LDFLAGS) $(LD_FLAGS) 
+
+endif
 
 clean:
 	rm -f $(OBJS)

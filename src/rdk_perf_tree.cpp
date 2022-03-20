@@ -22,6 +22,8 @@
 #include <dlfcn.h>
 
 #include "rdk_perf_node.h"
+#include "rdk_perf_record.h"
+#include "rdk_perf_msgqueue.h"
 #include "rdk_perf_tree.h"
 #include "rdk_perf_process.h"
 #include "rdk_perf_logging.h"
@@ -40,9 +42,9 @@ PerfTree::~PerfTree()
     return;
 }
 
-void PerfTree::AddNode(PerfNode * pNode)
+PerfNode* PerfTree::AddNode(PerfRecord* pRecord)
 {
-    PerfNode* pTreeNode = NULL;
+    PerfNode* pNode     = NULL;
     PerfNode* pTop      = NULL;
 
     //Get last opended node
@@ -57,15 +59,44 @@ void PerfTree::AddNode(PerfNode * pNode)
         pthread_getname_np(m_idThread, m_ThreadName, THREAD_NAMELEN);
         pTop = m_activeNode.top();
         LOG(eWarning, "Creating new Tree stack size = %d for node %s, thread name %s\n", 
-            m_activeNode.size(), pNode->GetName().c_str(), m_ThreadName);        
+            m_activeNode.size(), pRecord->GetName().c_str(), m_ThreadName);        
     }
-    pTreeNode = pTop->AddChild(pNode);
-    m_activeNode.push(pTreeNode);
+    pNode = pTop->AddChild(pRecord);
+    m_activeNode.push(pNode);
     m_ActivityCount++;
 
     pNode->SetTree(this);
 
-    return;
+    return pNode;
+}
+
+PerfNode* PerfTree::AddNode(char* szName, pthread_t tID, char* szThreadName, uint64_t nStartTime)
+{
+    PerfNode* pNode     = NULL;
+    PerfNode* pTop      = NULL;
+
+    //Get last opended node
+    if(m_activeNode.size() > 0) {
+        pTop = m_activeNode.top();
+    }
+    else {
+        // New Tree
+        m_rootNode = new PerfNode();    // root node special constructor
+        m_activeNode.push(m_rootNode);
+        m_idThread = tID;
+        memcpy(m_ThreadName, szThreadName, strlen(szThreadName));
+        pTop = m_activeNode.top();
+        LOG(eWarning, "Creating new Tree stack size = %d for node %s, thread name %s\n", 
+            m_activeNode.size(), szName, szThreadName);        
+    }
+
+    pNode = pTop->AddChild(szName, tID, nStartTime);
+    m_activeNode.push(pNode);
+    m_ActivityCount++;
+
+    pNode->SetTree(this);
+
+    return pNode;
 }
 
 bool PerfTree::IsInactive()
@@ -83,7 +114,7 @@ bool PerfTree::IsInactive()
     return retVal;
 }
 
-void PerfTree::CloseActiveNode(PerfNode * pTreeNode)
+void PerfTree::CloseActiveNode(PerfNode* pTreeNode)
 {
     //Get last opended node
     PerfNode* pTop = m_activeNode.top();

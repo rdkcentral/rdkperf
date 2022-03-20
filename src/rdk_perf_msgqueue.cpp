@@ -53,7 +53,7 @@ PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
     }
 
     // m_queue = mq_open(szQueueName, flags);
-    new_attr.mq_maxmsg = 11;
+    new_attr.mq_maxmsg = 10;
     new_attr.mq_msgsize = sizeof(PerfMessage);
 
     if(bService) {
@@ -92,7 +92,7 @@ PerfMsgQueue::~PerfMsgQueue()
     }
 }
 
-bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nTimeStamp, uint32_t nThresholdInUS)
+bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nTimeStamp, int32_t nThresholdInUS)
 {
     bool retVal = true;
     PerfMessage msg;
@@ -107,6 +107,7 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         msg.msg_data.entry.tID = pthread_self();
         msg.msg_data.entry.nTimeStamp = nTimeStamp;
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
+        pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_NAME_LEN);
         memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
         break;
     case eThreshold:
@@ -133,7 +134,7 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         msg.msg_data.close_thread.tID = pthread_self();
         break;
     case eCloseProcess:
-        msg.msg_data.close_proces.pID = getpid();
+        msg.msg_data.close_process.pID = getpid();
         break;
     case eExitQueue:
         LOG(eWarning, "Sending Exit Queue message\n");
@@ -167,7 +168,7 @@ bool PerfMsgQueue::SendMessage(PerfMessage* pMsg)
     return retVal;
 }
 
-bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, uint32_t nTimeoutInMS)
+bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS)
 {
     bool        retVal      = false;
     size_t      nRead       = 0;
@@ -205,7 +206,7 @@ bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, uint32_t nTimeoutInMS)
         tm.tv_sec = time(NULL) + nTimeoutInMS / 1000;  // Convert to seconds;
 	    tm.tv_nsec = (nTimeoutInMS % 1000) * 1000 * 1000;  // Convert remainder to nano seconds
         nRead = mq_timedreceive(m_queue, (char*)buffer, m_queue_attr.mq_msgsize, &priority, &tm);
-        if(nRead < sizeof(PerfMessage) || nRead == (size_t)-1) {
+        if(nRead != sizeof(PerfMessage) || nRead == (size_t)-1) {
             int errnum = errno;
             if(errnum == ETIMEDOUT) {
                 //LOG(eWarning, "No message, receive timed out\n");
@@ -218,14 +219,17 @@ bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, uint32_t nTimeoutInMS)
             }
         }
         else {
-             LOG(eError, "Got message, received = %d\n", nRead);
-            if(nRead == sizeof(PerfMessage)) {
-                // Got expected message size
-                memcpy(pMsg, buffer, nRead);
-            }
+            // Got expected buffer length
+            memcpy(pMsg, buffer, nRead);
             retVal = true;
         }
     }
+
+    if (mq_getattr(m_queue, &m_queue_attr) != -1) {
+        if(m_queue_attr.mq_curmsgs > m_queue_attr.mq_maxmsg - 2) {
+            LOG(eWarning, "Queue Depth at threshold %d max %d\n", m_queue_attr.mq_curmsgs, m_queue_attr.mq_maxmsg);
+        }
+    }    
     return retVal;
 }
 

@@ -29,6 +29,8 @@
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
 #include "rdk_perf_msgqueue.h"
+#include "rdk_perf_process.h"
+#include "rdk_perf_tree.h"  // Needs to come after rdk_perf_process because of forward declaration of PerfTree
 #include "rdk_perf.h"
 
 #include <glib.h>
@@ -40,8 +42,6 @@
 #define MAX_DELAY 600
 
 
-static std::map<pid_t, PerfProcess*>* sp_ProcessMap;
-
 #ifdef PERF_REMOTE
 static PerfMsgQueue* s_pQueue = NULL;
 #endif // PERF_REMOTE
@@ -51,8 +51,8 @@ static void __attribute__((destructor)) PerfModuleTerminate();
 
 class TimerCallback {
 public:
-    TimerCallback (std::map<pid_t, PerfProcess*>* pProcessMap) 
-    : m_ProcessMap(pProcessMap)
+    TimerCallback (void* pContext) 
+    : m_Context(pContext)
     , m_bContinue(false)
     , m_nDelay(0)
     , m_nCount(0)
@@ -76,8 +76,7 @@ public:
         LOG(eTrace, "Timer Callback! m_nCount = %d m_nDelay = %d\n", m_nCount, m_nDelay);
 
         // Validate that threads in process are still active
-        auto it = m_ProcessMap->find(getpid());
-        if(it != m_ProcessMap->end()) {
+        if(RDKPerf_FindProcess(getpid()) != NULL) {
             // Found a process in the list
             if(m_nCount > m_nDelay) {
                 RDKPerf_ReportProcess(getpid());
@@ -90,7 +89,7 @@ public:
             m_nCount++;
         }
         else {
-            LOG(eTrace, "Could not find Process ID %X from map of size %d for reporting\n", (uint32_t)getpid(), m_ProcessMap->size());
+            LOG(eTrace, "Could not find Process ID %X from map of size %d for reporting\n", (uint32_t)getpid(), RDKPerf_GetMapSize());
         }
 
         return bTimerContinue;
@@ -108,10 +107,10 @@ public:
         return;
     };
 private:
-    std::map<pid_t, PerfProcess*>*  m_ProcessMap;
-    bool                            m_bContinue; 
-    uint32_t                        m_nDelay;
-    uint32_t                        m_nCount;
+    void*       m_Context;
+    bool        m_bContinue; 
+    uint32_t    m_nDelay;
+    uint32_t    m_nCount;
 
 };
 
@@ -139,13 +138,12 @@ static void PerfModuleInit()
 
     LOG(eWarning, "RDK performance process initialize %X named %s\n", getpid(), strProcessName);       
     
-    sp_ProcessMap = new std::map<pid_t, PerfProcess*>();
-    sp_ProcessMap->clear();
-    s_timer = new TimerCallback(sp_ProcessMap);
+    RDKPerf_InitializeMap();
+    s_timer = new TimerCallback(NULL);
 
     if(s_thread == NULL) {
         s_thread = new std::thread(&TimerCallback::Task, s_timer);
-        LOG(eWarning, "Created new timer (%X) with the context %p\n", s_thread->get_id(), sp_ProcessMap);
+        LOG(eWarning, "Created new timer (%X) with the context %p\n", s_thread->get_id(), NULL);
     }
     else {
         LOG(eWarning, "Timer already exists %X\n"), s_thread->get_id();
@@ -163,16 +161,7 @@ static void PerfModuleTerminate()
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
     RDKPerf_ReportProcess(pID);
 
-    // Find thread in process map
-    auto it = sp_ProcessMap->find(pID);
-    if(it == sp_ProcessMap->end()) {
-        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)pID);
-    }
-    else {
-        LOG(eError, "Process Map size %d found entry for PID %X\n", sp_ProcessMap->size(), it->first);
-        delete it->second;
-        sp_ProcessMap->erase(it);
-    }
+    RDKPerf_RemoveProcess(pID);
 
     if(s_thread != NULL && s_thread->joinable()) {
         LOG(eWarning, "Cleaning up timer thread\n");
@@ -193,35 +182,32 @@ static void PerfModuleTerminate()
     }
 #endif // PERF_REMOTE
 
-    delete sp_ProcessMap;
+    RDKPerf_DeleteMap();
 }
 
 //-------------------------------------------
-RDKPerf::RDKPerf(const char* szName) 
-: m_node(szName)
+RDKPerfInProc::RDKPerfInProc(const char* szName) 
+: m_record(szName)
 {
-    SCOPED_LOCK();
     return;
 }
-RDKPerf::RDKPerf(const char* szName, uint32_t nThresholdInUS)
-: m_node(szName)
+RDKPerfInProc::RDKPerfInProc(const char* szName, uint32_t nThresholdInUS)
+: m_record(szName)
 {
-    SCOPED_LOCK();
-    m_node.SetThreshold(nThresholdInUS);
+    m_record.SetThreshold((int32_t)nThresholdInUS);
     return;
 }
 
-void RDKPerf::SetThreshhold(uint32_t nThresholdInUS)
+void RDKPerfInProc::SetThreshhold(uint32_t nThresholdInUS)
 {
-    SCOPED_LOCK();
-    m_node.SetThreshold(nThresholdInUS); 
+    m_record.SetThreshold((int32_t)nThresholdInUS); 
 }
 
-RDKPerf::~RDKPerf()
+RDKPerfInProc::~RDKPerfInProc()
 {
-    SCOPED_LOCK();
     return;
 }
+
 //-------------------------------------------
 RDKPerfRemote::RDKPerfRemote(const char* szName) 
 : m_szName(szName)
@@ -234,7 +220,10 @@ RDKPerfRemote::RDKPerfRemote(const char* szName)
 #ifdef PERF_REMOTE
     if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
     if(s_pQueue != NULL) {
-        s_pQueue->SendMessage(eEntry, m_szName, m_StartTime);
+        s_pQueue->SendMessage(eEntry, m_szName, m_StartTime, m_nThresholdInUS);
+    }
+    else {
+        LOG(eError, "Could not get Message Queue to send perf events\n");
     }
 #endif // PERF_REMOTE    
     return;
@@ -243,14 +232,16 @@ RDKPerfRemote::RDKPerfRemote(const char* szName, uint32_t nThresholdInUS)
 : m_szName(szName)
 , m_nThresholdInUS(nThresholdInUS)
 {
- 
-    m_EndTime = TimeStamp();
+    m_StartTime = TimeStamp();
  
      // Send enter event
- #ifdef PERF_REMOTE
+#ifdef PERF_REMOTE
     if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
     if(s_pQueue != NULL) {
-        s_pQueue->SendMessage(eEntry, m_szName, nThresholdInUS, m_EndTime);
+        s_pQueue->SendMessage(eEntry, m_szName, m_StartTime, nThresholdInUS);
+    }
+    else {
+        LOG(eError, "Could not get Message Queue to send perf events\n");
     }
 #endif // PERF_REMOTE    
    return;
@@ -262,7 +253,7 @@ void RDKPerfRemote::SetThreshhold(uint32_t nThresholdInUS)
     m_nThresholdInUS = nThresholdInUS;
 #ifdef PERF_REMOTE
     if(s_pQueue != NULL) {
-        s_pQueue->SendMessage(eThreshold, m_szName, m_nThresholdInUS);
+        s_pQueue->SendMessage(eThreshold, m_szName, 0, m_nThresholdInUS);
     }
 #endif // PERF_REMOTE    
 }
@@ -282,53 +273,38 @@ uint64_t RDKPerfRemote::TimeStamp()
 
 RDKPerfRemote::~RDKPerfRemote()
 {
+    m_EndTime = TimeStamp();
+
     // Send close event
 #ifdef PERF_REMOTE
     if(s_pQueue != NULL) {
-        s_pQueue->SendMessage(eExit, m_szName);
+        s_pQueue->SendMessage(eExit, m_szName, m_EndTime - m_StartTime);
+    }
+    else {
+        LOG(eError, "Could not get Message Queue to send perf events\n");
     }
 #endif // PERF_REMOTE    
     return;
 }
+
 //-------------------------------------------
-
-PerfProcess* RDKPerf_FindProcess(pid_t pID)
-{
-    PerfProcess* retVal = NULL;
-
-    SCOPED_LOCK();
-
-    auto it = sp_ProcessMap->find(pID);
-    if(it != sp_ProcessMap->end()) {
-        retVal = it->second;
-    }
-
-    return retVal;
-}
-void RDKPerf_InsertProcess(pid_t pID, PerfProcess* pProcess)
-{
-    SCOPED_LOCK();
-    sp_ProcessMap->insert(std::pair<pid_t, PerfProcess*>(pID, pProcess));
-    LOG(eError, "Process Map %p size %d added entry for PID %X, pProcess %p\n", sp_ProcessMap, sp_ProcessMap->size(), pID, pProcess);
-}
+extern "C" {
 
 void RDKPerf_ReportProcess(pid_t pID)
 {
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eReportProcess, NULL, 0, 0);
+    }
+#else // PERF_REMOTE
     // Find Process ID in List
     PerfProcess*    pProcess = NULL;
 
     SCOPED_LOCK();
 
     // Find thread in process map
-    auto it = sp_ProcessMap->find(pID);
-    if(it == sp_ProcessMap->end()) {
-        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)pID);
-        return;
-    }
-    else {
-        pProcess = it->second;
-    }
-
+    pProcess = RDKPerf_FindProcess(pID);
+    
     if(pProcess != NULL) {
         pProcess->ShowTrees();
         // Close threads that have no activity since the last report
@@ -336,64 +312,79 @@ void RDKPerf_ReportProcess(pid_t pID)
         LOG(eWarning, "Printing process report for Process ID %X\n", (uint32_t)pID);
         pProcess->ReportData();
     }
+#endif // PERF_REMOTE  
 
     return;
 }
+
 void RDKPerf_ReportThread(pthread_t tID)
 {
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eReportThread, NULL, 0, 0);
+    }
+#else // PERF_REMOTE
     // Find Process ID in List
     PerfProcess*    pProcess = NULL;
 
     SCOPED_LOCK();
 
     // Find thread in process map
-    auto it = sp_ProcessMap->find(getpid());
-    if(it == sp_ProcessMap->end()) {
-        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)getpid());
-        return;
-    }
-    else {
-        pProcess = it->second;
-    }
+    pProcess = RDKPerf_FindProcess(getpid());
 
     PerfTree* pTree = pProcess->GetTree(tID);
     if(pTree != NULL) {
         LOG(eWarning, "Printing tree report for Task ID %X\n", (uint32_t)tID);
         pTree->ReportData();
     }
-
+#endif // PERF_REMOTE
     return;
 
 }
 
 void RDKPerf_CloseThread(pthread_t tID)
 {
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eCloseThread, NULL, 0, 0);
+    }
+#else // PERF_REMOTE
     // Find Process ID in List
     PerfProcess*    pProcess = NULL;
 
     SCOPED_LOCK();
 
     // Find thread in process map
-    auto it = sp_ProcessMap->find(getpid());
-    if(it == sp_ProcessMap->end()) {
-        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)getpid());
-        return;
-    }
-    else {
-        pProcess = it->second;
-    }
+    pProcess = RDKPerf_FindProcess(getpid());
 
     if(pProcess != NULL) {
         pProcess->RemoveTree(tID);
     }
-
+#endif // PERF_REMOTE
     return;
 }
 
-extern "C" {
+void RDKPerf_CloseProcess(pid_t pID)
+{
+#ifdef PERF_REMOTE
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eCloseProcess, NULL, 0, 0);
+    }
+#else // PERF_REMOTE
+    // Find Process ID in List
+    PerfProcess*    pProcess = NULL;
+
+    SCOPED_LOCK();
+
+    RDKPerf_RemoveProcess(pID);
+#endif // PERF_REMOTE
+    return;
+}
+
 RDKPerfHandle RDKPerfStart(const char* szName)
 {
     RDKPerfHandle retVal = NULL;
+
     SCOPED_LOCK();
 
     retVal = (RDKPerfHandle)new RDKPerf(szName);
@@ -412,5 +403,15 @@ void RDKPerfStop(RDKPerfHandle hPerf)
     }
     return;
 }
+
+void RDKPerfSetThreshold(RDKPerfHandle hPerf, uint32_t nThresholdInUS)
+{
+    RDKPerf* perf = (RDKPerf*)hPerf;
+
+    perf->SetThreshhold(nThresholdInUS);
+
+    return;
+}
+
 
 } // extern "C" 

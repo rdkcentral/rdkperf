@@ -24,13 +24,13 @@
 #include <unistd.h>
 
 #include "rdk_perf_node.h"
+#include "rdk_perf_record.h"
 #include "rdk_perf_tree.h"
 #include "rdk_perf_process.h"
 #include "rdk_perf_logging.h"
-#include "rdk_perf.h"
 
 PerfNode::PerfNode()
-: m_elementName("root_node"), m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
+: m_elementName("root_node"), m_Tree(NULL), m_ThresholdInUS(-1)
 {
     m_startTime     = TimeStamp();
     m_idThread      = pthread_self();
@@ -45,13 +45,14 @@ PerfNode::PerfNode()
     return;
 }
 
-PerfNode::PerfNode(PerfNode* pNode)
-: m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
+PerfNode::PerfNode(PerfRecord* pRecord)
+: m_Tree(NULL), m_ThresholdInUS(-1)
 {
-    m_idThread      = pNode->m_idThread;
-    m_elementName   = pNode->m_elementName;
-    m_startTime     = pNode->m_startTime;
-    m_childNodes    = pNode->m_childNodes;
+    m_idThread      = pRecord->GetThreadID();
+    m_elementName   = pRecord->GetName();
+    m_startTime     = pRecord->GetStartTime();
+
+    m_childNodes.clear();
 
     memset((void*)&m_stats, 0, sizeof(TimingStats));
     m_stats.nTotalMin     = INITIAL_MIN_VALUE;      // Preset Min values to pickup the inital value
@@ -61,35 +62,19 @@ PerfNode::PerfNode(PerfNode* pNode)
     return;
 }
 
-PerfNode::PerfNode(std::string elementName)
-: m_elementName(elementName), m_nodeInTree(NULL), m_Tree(NULL), m_TheshholdInUS(-1)
+PerfNode::PerfNode(char* szName, pthread_t tID, uint64_t nStartTime)
+: m_Tree(NULL), m_ThresholdInUS(-1)
 {
-    pid_t           pID = getpid();
-    PerfProcess*    pProcess = NULL;
+    m_idThread      = tID;
+    m_elementName   = std::string(szName);
+    m_startTime     = nStartTime;
 
-    // LOG(eWarning, "Creating node for element %s pid %X\n", m_elementName.c_str(), pID);
-    
-    // Find thread in process map
-    pProcess = RDKPerf_FindProcess(pID);
-    if(pProcess == NULL) {
-        // no existing PID in map
-        pProcess = new PerfProcess(pID);
-        RDKPerf_InsertProcess(pID, pProcess);
-        LOG(eWarning, "Creating new process element %X for elemant %s\n", pProcess, m_elementName.c_str());
-    }
+    m_childNodes.clear();
 
-    m_startTime = TimeStamp();
-    m_idThread = pthread_self();
-
-    // Found PID get element tree for current thread.
-    PerfTree* pTree = pProcess->GetTree(m_idThread);
-    if(pTree == NULL) {
-        pTree = pProcess->NewTree(m_idThread);
-    }
-    
-    if(pTree) {
-        pTree->AddNode(this);
-    }
+    memset((void*)&m_stats, 0, sizeof(TimingStats));
+    m_stats.nTotalMin     = INITIAL_MIN_VALUE;      // Preset Min values to pickup the inital value
+    m_stats.nIntervalMin  = INITIAL_MIN_VALUE;
+    m_stats.elementName   = m_elementName;
 
     return;
 }
@@ -98,48 +83,57 @@ PerfNode::~PerfNode()
 {
     // LOG(eWarning, "Deleting Node %s\n", GetName().c_str());
 
-    if(m_nodeInTree != NULL) {
-        // This is a node in the code
-        uint64_t deltaTime = TimeStamp() - m_startTime;
-        m_nodeInTree->IncrementData(deltaTime);
-        m_Tree->CloseActiveNode(m_nodeInTree);
-        if(m_TheshholdInUS > 0 && deltaTime > (uint64_t)m_TheshholdInUS) {
-            LOG(eWarning, "%s Threshold %ld exceeded, elapsed time = %0.3lf ms Avg time = %0.3lf (interval %0.3lf) ms\n", 
-                          GetName().c_str(), 
-                          m_TheshholdInUS / 1000,
-                          ((double)deltaTime) / 1000.0,
-                          ((double)m_nodeInTree->m_stats.nTotalTime / (double)m_nodeInTree->m_stats.nTotalCount) / 1000.0,
-                          ((double)m_nodeInTree->m_stats.nIntervalTime / (double)m_nodeInTree->m_stats.nIntervalCount) / 1000.0);
-            m_nodeInTree->ReportData(0, true);
-        }
-    }
-    else {
-        // This is a node in the tree and should be cleaned up
-        auto it = m_childNodes.begin();
-        while(it != m_childNodes.end()) {
-            delete it->second;
-            it++;
-        }
+    // This is a node in the tree and should be cleaned up
+    auto it = m_childNodes.begin();
+    while(it != m_childNodes.end()) {
+        delete it->second;
+        it++;
     }
 
     return;
 }
-PerfNode* PerfNode::AddChild(PerfNode * pNode)
+PerfNode* PerfNode::AddChild(PerfRecord * pRecord)
 {
+    PerfNode* pNode = NULL;
     // Does this node exist in the list of children
-    auto it = m_childNodes.find(pNode->GetName());
+    auto it = m_childNodes.find(pRecord->GetName());
     if(it == m_childNodes.end()) {
         // new child
         // Create copy of Node for storage in the tree
-        PerfNode* copyNode = new PerfNode(pNode);
-        m_childNodes[pNode->GetName()] = copyNode;
-        pNode->m_nodeInTree = copyNode;
+        pNode = new PerfNode(pRecord);
+        m_childNodes[pRecord->GetName()] = pNode;
     }
     else {
-        pNode->m_nodeInTree = it->second;
+        pNode = it->second;
     }
 
-    return pNode->m_nodeInTree;
+    pRecord->SetNodeInTree(pNode);
+    return pNode;
+}
+
+PerfNode* PerfNode::AddChild(char* szName, pthread_t tID, uint64_t nStartTime)
+{
+    PerfNode* pNode = NULL;
+    // Does this node exist in the list of children
+    auto it = m_childNodes.find(std::string(szName));
+    if(it == m_childNodes.end()) {
+        // new child
+        // Create copy of Node for storage in the tree
+        pNode = new PerfNode(szName, tID, nStartTime);
+        m_childNodes[szName] = pNode;
+    }
+    else {
+        pNode = it->second;
+    }
+
+    return pNode;
+}
+
+void PerfNode::CloseNode()
+{
+    if(m_Tree != NULL) {
+        m_Tree->CloseActiveNode(this);
+    }
 }
 
 void PerfNode::IncrementData(uint64_t deltaTime)
