@@ -33,7 +33,6 @@
 #include "rdk_perf_tree.h"  // Needs to come after rdk_perf_process because of forward declaration of PerfTree
 #include "rdk_perf.h"
 
-#include <glib.h>
 #include <unistd.h>
 
 #define REPORTING_INITIAL_COUNT 5000

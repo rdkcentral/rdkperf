@@ -23,11 +23,7 @@ CXXFLAGS += $(FEATURE_FLAGS)
 
 CFLAGS = -std=c99 $(CXXFLAGS)
 
-GLIB_INCLUDE = $(shell pkg-config --cflags glib-2.0)
-GLIB_LDFLAGS = $(shell pkg-config --libs glib-2.0)
-
-INCLUDES = -I$(BUILD_SYSROOT)/usr/include/ \
-    		$(GLIB_INCLUDE)
+INCLUDES = -I$(BUILD_SYSROOT)/usr/include/ 
 
 INCLUDES += \
 	-I$(PWD)/../src \
@@ -62,7 +58,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(pkg-config --libs glib-2.0) -o $@ $(OBJS) $(GLIB_LDFLAGS) $(LD_FLAGS) 
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LD_FLAGS) 
 
 endif
 

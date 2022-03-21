@@ -30,11 +30,18 @@
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
 
-#include <glib.h>
 #include <unistd.h>
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/stat.h>        /* For mode constants */
 #include <mqueue.h>
+
+
+#ifndef MIN
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
 
 #define RDK_PERF_MSG_QUEUE_NAME "/test"
 // #define RDK_PERF_MSG_QUEUE_NAME "/RDKPerfServerQueue"
