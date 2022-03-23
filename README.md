@@ -8,6 +8,10 @@ RDKPerf is a lightweight profiling tool for real time performance metrics report
 
 Metrics reports can be initiated directly from the code or can happen automatically at controlled intervals.  The reporting data will contain a call stack of all instrumented functions so it is possible to see how different code modules are used in conjunction with each other.
 
+
+## License
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 ## Instructions
 
 Adding metrics gathering for a function is as easy as instantiating a RDKPerf object on the stack.   When it is created a timestamp is logged within the object.  When the object is destructed the elapsed time is recoded in a table.
