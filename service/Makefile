@@ -23,8 +23,6 @@ CXXFLAGS += $(FEATURE_FLAGS)
 
 CFLAGS = -std=c99 $(CXXFLAGS)
 
-INCLUDES = -I$(BUILD_SYSROOT)/usr/include/ 
-
 INCLUDES += \
 	-I$(PWD)/../src \
 	-I$(PWD)/../rdkperf
