@@ -43,8 +43,8 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
 
-#define RDK_PERF_MSG_QUEUE_NAME "/test"
-// #define RDK_PERF_MSG_QUEUE_NAME "/RDKPerfServerQueue"
+//#define RDK_PERF_MSG_QUEUE_NAME "/test"
+#define RDK_PERF_MSG_QUEUE_NAME "/RDKPerfServerQueue"
 #define MAX_NAME_LEN 128
 
 typedef enum _MessageType 
