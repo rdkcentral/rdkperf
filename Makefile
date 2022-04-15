@@ -31,4 +31,5 @@ clean:
 	@for i in $(SUBDIRS); do \
 	echo "Clearing in $$i..."; \
 	(cd $$i; $(MAKE) $(MFLAGS) clean); done
-	rmdir $(BUILD_DIR)
+	@[ -d $(BUILD_DIR) ] && rmdir $(BUILD_DIR) || true
+	
