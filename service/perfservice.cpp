@@ -135,7 +135,7 @@ bool HandleExit(PerfMessage* pMsg)
         PerfNode* pNode = pTree->GetStack()->top();
         if(pNode != NULL && 
             pNode->GetName().compare(szName) == 0) {
-            pNode->IncrementData(pMsg->msg_data.exit.nTimeStamp);
+            pNode->IncrementData(pMsg->msg_data.exit.nTimeStamp, 0, 0);
             pNode->CloseNode();
             retVal = true;
         }

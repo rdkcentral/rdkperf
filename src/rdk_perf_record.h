@@ -31,6 +31,8 @@
 #include <map>
 #include <stack>
 
+#include "rdk_perf_clock.h"
+
 #define MAX_BUF_SIZE 2048
 
 
@@ -60,6 +62,7 @@ private:
     uint64_t                m_startTime;
     PerfNode*               m_nodeInTree;
     int32_t                 m_ThresholdInUS;
+    PerfClock               m_clock;
 };
 
 #endif // __RDK_PERF_RECORD_H__

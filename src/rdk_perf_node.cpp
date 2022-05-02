@@ -36,9 +36,11 @@ PerfNode::PerfNode()
     m_idThread      = pthread_self();
 
     memset((void*)&m_stats, 0, sizeof(TimingStats));
-    m_stats.nTotalMin     = INITIAL_MIN_VALUE;      // Preset Min values to pickup the inital value
-    m_stats.nIntervalMin  = INITIAL_MIN_VALUE;
-    m_stats.elementName   = m_elementName;
+    m_stats.nTotalMin      = INITIAL_MIN_VALUE;      // Preset Min values to pickup the inital value
+    m_stats.nIntervalMin   = INITIAL_MIN_VALUE;
+    m_stats.elementName    = m_elementName;
+    m_stats.nTotalCount    = 1;
+    m_stats.nIntervalCount = 1;
 
     // LOG(eWarning, "Creating node for element %s\n", m_elementName.c_str());
 
@@ -136,7 +138,7 @@ void PerfNode::CloseNode()
     }
 }
 
-void PerfNode::IncrementData(uint64_t deltaTime)
+void PerfNode::IncrementData(uint64_t deltaTime, uint64_t userCPU, uint64_t systemCPU)
 {
     // Increment totals
     m_stats.nLastDelta = deltaTime;
@@ -160,6 +162,11 @@ void PerfNode::IncrementData(uint64_t deltaTime)
         m_stats.nIntervalMax = deltaTime;
     }
     m_stats.nIntervalAvg = (double)m_stats.nIntervalTime / (double)m_stats.nIntervalCount;
+
+    m_stats.nUserCPU = userCPU;
+    m_stats.nSystemCPU = systemCPU;
+    m_stats.nTotalUserCPU += userCPU;
+    m_stats.nTotalSystemCPU += systemCPU;
 
     return;
 }
@@ -187,16 +194,31 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
 
     if(bShowOnlyDelta) {
         // Print only the current delta time data 
+#ifdef PERF_SHOW_CPU
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s elapsed time %0.3lf CPU User %0.3lf, System %0.3lf\n",
+                m_stats.elementName.c_str(),
+                (double)m_stats.nLastDelta / 1000.0,
+                (double)m_stats.nUserCPU / 1000.0, (double)m_stats.nSystemCPU / 1000.0);
+#else
         snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s elapsed time %0.3lf\n",
                 m_stats.elementName.c_str(),
                 (double)m_stats.nLastDelta / 1000.0);
+#endif
     }
     else {
         // Print data for this node
-        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max, Min, Avg) Total %lu, %0.3lf, %0.3lf, %0.3lf Interval %lu, %0.3lf, %0.3lf, %0.3lf",
+#ifdef PERF_SHOW_CPU
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s CPU User %0.3lf, System %0.3lf (Count, Max, Min, Avg) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf",
+                m_stats.elementName.c_str(),
+                (double)m_stats.nTotalUserCPU / 1000.0 / m_stats.nTotalCount, (double)m_stats.nTotalSystemCPU / 1000.0 / m_stats.nTotalCount,
+                m_stats.nTotalCount, ((double)m_stats.nTotalMax) / 1000.0, ((double)m_stats.nTotalMin) / 1000.0, m_stats.nTotalAvg / 1000.0,
+                m_stats.nIntervalCount, ((double)m_stats.nIntervalMax) / 1000.0, ((double)m_stats.nIntervalMin) / 1000.0, m_stats.nIntervalAvg / 1000.0);
+#else
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max, Min, Avg) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf",
                 m_stats.elementName.c_str(),
                 m_stats.nTotalCount, ((double)m_stats.nTotalMax) / 1000.0, ((double)m_stats.nTotalMin) / 1000.0, m_stats.nTotalAvg / 1000.0,
                 m_stats.nIntervalCount, ((double)m_stats.nIntervalMax) / 1000.0, ((double)m_stats.nIntervalMin) / 1000.0, m_stats.nIntervalAvg / 1000.0);
+#endif
     }
     LOG(eWarning, "%s\n", buffer);
     
