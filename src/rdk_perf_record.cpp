@@ -31,6 +31,11 @@
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
 
+#ifndef PERF_SHOW_CPU
+#pragma message "Using TimeStamp instead of PerfClock"
+#define USE_TIMESTAMP
+#endif
+
 PerfRecord::PerfRecord(std::string elementName)
 : m_elementName(elementName), m_nodeInTree(NULL), m_ThresholdInUS(-1)
 {
@@ -50,7 +55,13 @@ PerfRecord::PerfRecord(std::string elementName)
         LOG(eWarning, "Creating new process element %X for elemant %s\n", pProcess, m_elementName.c_str());
     }
 
-    m_startTime = TimeStamp();
+#ifdef USE_TIMESTAMP
+    m_startTime = PerfRecord::TimeStamp();
+#else
+    PerfClock::Now(&m_clock, PerfClock::Marker);
+    m_startTime = m_clock.GetWallClock();
+    // LOG(eWarning, "TimeStamp = %0.3lf\n", ((double)m_startTime) / 1000.0)
+#endif
     m_idThread = pthread_self();
 
     // Found PID get element tree for current thread.
@@ -69,9 +80,17 @@ PerfRecord::PerfRecord(std::string elementName)
 PerfRecord::~PerfRecord()
 {
     SCOPED_LOCK();
+    uint64_t deltaTime = 0;
 
-    uint64_t deltaTime = TimeStamp() - m_startTime;
-    m_nodeInTree->IncrementData(deltaTime);
+#ifdef USE_TIMESTAMP
+    deltaTime = PerfRecord::TimeStamp() - m_startTime;
+    m_nodeInTree->IncrementData(deltaTime, 0, 0);
+#else
+    PerfClock::Now(&m_clock, PerfClock::Elapsed);
+    deltaTime = m_clock.GetWallClock();
+    m_nodeInTree->IncrementData(deltaTime, m_clock.GetUserCPU(), m_clock.GetSystemCPU());
+#endif
+
     m_nodeInTree->CloseNode();
     if(m_ThresholdInUS > 0 && deltaTime > (uint64_t)m_ThresholdInUS) {
         TimingStats* stats = m_nodeInTree->GetStats();

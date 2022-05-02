@@ -27,13 +27,24 @@
 #include <pthread.h>
 
 #include "rdk_perf.h"
+#include "rdk_perf_logging.h"
 
+// Uint Tests prototype
+void unit_tests();
+void unit_tests_c();
 
 uint32_t Func3(uint32_t nCount)
 {
     RDKPerf perf(__FUNCTION__);
 
-    usleep(100);
+    nCount = 1000000000;
+    while(nCount >= 1) {
+        nCount--;
+        if(nCount == 1) {
+            break;
+        }
+    }
+    //usleep(100);
     nCount++;
     return nCount;
 }
@@ -41,7 +52,7 @@ uint32_t Func3(uint32_t nCount)
 void Func2()
 {
     RDKPerf perf(__FUNCTION__);
-    for(int nIdx = 0; nIdx < 2; nIdx++) {
+    for(int nIdx = 0; nIdx < 5; nIdx++) {
         Func3(nIdx);
     }
     sleep(1);
@@ -56,7 +67,7 @@ void Func1()
 }
 
 //#define MAX_LOOP 1024 * 1024 * 1
-#define MAX_LOOP 1000
+#define MAX_LOOP 1
 void* task1(void* pData)
 {
     pthread_setname_np(pthread_self(), __FUNCTION__);
@@ -127,6 +138,11 @@ int main(int argc, char *argv[])
     // }
     // sleep(1);
 #endif
+    // Perform Unit tests
+    unit_tests();
+    //unit_tests_c();
+
+#ifdef DO_THREAD_TESTS
     pthread_t threadId1;
     pthread_t threadId2;
 
@@ -137,10 +153,13 @@ int main(int argc, char *argv[])
  
     pthread_join(threadId1, NULL);
     pthread_join(threadId2, NULL);
+#endif
 
+#ifdef DO_INLINE_TESTS
     for(int idx = 0; idx < 1000; idx++) {
         test_inline();
     }
+#endif
     // Don't need to make this call as the process terminate handler will 
     // call the RDKPerf_ReportProcess() function
     // RDKPerf_ReportProcess(getpid());

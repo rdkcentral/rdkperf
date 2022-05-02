@@ -48,6 +48,10 @@ typedef struct _TimingStats
     uint64_t            nIntervalMin;
     uint64_t            nIntervalCount;
     uint64_t            nLastDelta;
+    uint64_t            nUserCPU;
+    uint64_t            nSystemCPU;
+    uint64_t            nTotalUserCPU;
+    uint64_t            nTotalSystemCPU;
 } TimingStats;
 
 // Forward decls
@@ -71,7 +75,7 @@ public:
     void SetThreshold(int32_t nThreshold) { m_ThresholdInUS = nThreshold; };
 
     void CloseNode();
-    void IncrementData(uint64_t deltaTime);
+    void IncrementData(uint64_t deltaTime, uint64_t userCPU, uint64_t systemCPU);
     void ResetInterval();
 
     void ReportData(uint32_t nLevel, bool bShowOnlyDelta = false);
