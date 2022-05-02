@@ -193,7 +193,7 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     }
     else {
         // Print data for this node
-        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max, Min, Avg) Total %lu, %0.3lf, %0.3lf, %0.3lf Interval %lu, %0.3lf, %0.3lf, %0.3lf",
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max, Min, Avg) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf",
                 m_stats.elementName.c_str(),
                 m_stats.nTotalCount, ((double)m_stats.nTotalMax) / 1000.0, ((double)m_stats.nTotalMin) / 1000.0, m_stats.nTotalAvg / 1000.0,
                 m_stats.nIntervalCount, ((double)m_stats.nIntervalMax) / 1000.0, ((double)m_stats.nIntervalMin) / 1000.0, m_stats.nIntervalAvg / 1000.0);

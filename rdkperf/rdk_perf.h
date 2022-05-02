@@ -32,7 +32,6 @@
 
 #include "rdk_perf_record.h"
 #include "rdk_perf_node.h"
-#include "rdk_perf_logging.h"
 
 #define FUNC_METRICS_START(depth)                                   \
     {                                                               \
@@ -79,8 +78,6 @@ public:
     void SetThreshhold(uint32_t nThresholdInUS);
 
 private:
-    uint64_t TimeStamp();
-
     const char* m_szName;
     uint32_t    m_nThresholdInUS;
     uint64_t    m_StartTime;

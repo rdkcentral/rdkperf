@@ -27,6 +27,7 @@
 #include <pthread.h>
 
 #include "rdk_perf.h"
+#include "rdk_perf_logging.h"
 
 
 uint32_t Func3(uint32_t nCount)

@@ -1,0 +1,15 @@
+[Unit]
+Description=RDKPerf service for performance logging
+After=
+Requires=
+[Service]
+Type=notify
+TimeoutStartSec=10s
+EnvironmentFile=
+ExecStartPre=
+ExecStart=/bin/sh -c 'exec /usr/bin/perfservice &'
+RemainAfterExit=yes
+RestartSec=5
+Restart=always
+[Install]
+WantedBy=multi-user.target
