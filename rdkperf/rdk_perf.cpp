@@ -125,7 +125,8 @@ static TimerCallback*   s_timer = NULL;
 static void PerfModuleInit()
 {
     // Test to see if message queue service is running
-    
+#ifndef NO_PERF
+#error HI_THERE
     char cmd[80] = { 0 };
     char strProcessName[PROCESS_NAMELEN];
 
@@ -151,14 +152,15 @@ static void PerfModuleInit()
     else {
         LOG(eWarning, "Timer already exists %X\n"), s_thread->get_id();
     }
-
     LOG(eTrace, "Exit init code\n");
+#endif // NO_PERF
 }
   
 // This function is assigned to execute as library unload
 // using __attribute__((destructor))
 static void PerfModuleTerminate()
 {
+#ifndef NO_PERF
     pid_t pID = getpid();
 
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
@@ -187,8 +189,29 @@ static void PerfModuleTerminate()
 #endif // PERF_REMOTE
 
     RDKPerf_DeleteMap();
+#endif
 }
 
+#ifdef NO_PERF
+//-------------------------------------------
+RDKPerfEmpty::RDKPerfEmpty(const char* szName) 
+{
+    printf("RDKPerfEmpty --> %s\n", szName);fflush(stdout);
+    return;
+}
+RDKPerfEmpty::RDKPerfEmpty(const char* szName, uint32_t nThresholdInUS)
+{
+    printf("RDKPerfEmpty(t) --> %s\n", szName);fflush(stdout);
+    return;
+}
+void RDKPerfEmpty::SetThreshhold(uint32_t nThresholdInUS)
+{
+}
+RDKPerfEmpty::~RDKPerfEmpty()
+{
+    return;
+}
+#endif
 //-------------------------------------------
 RDKPerfInProc::RDKPerfInProc(const char* szName) 
 : m_record(szName)

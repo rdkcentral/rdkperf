@@ -54,7 +54,20 @@
         }                                                           \
     }                                                               \
 
-    
+#ifdef NO_PERF
+class RDKPerfEmpty
+{
+public:
+    RDKPerfEmpty(const char* szName, uint32_t nThresholdInUS);
+    RDKPerfEmpty(const char* szName);
+    ~RDKPerfEmpty();
+
+    void SetThreshhold(uint32_t nThresholdInUS);
+
+private:
+};
+#endif
+
 class RDKPerfInProc
 {
 public:
@@ -84,12 +97,16 @@ private:
     uint64_t    m_EndTime;
 };
 
-#ifdef PERF_REMOTE
-#define RDKPerf RDKPerfRemote
-#else
-#define RDKPerf RDKPerfInProc
-#endif // PERF_REMOTE
 
+#ifdef NO_PERF
+    #define RDKPerf RDKPerfEmpty
+#else
+    #ifdef PERF_REMOTE
+    #define RDKPerf RDKPerfRemote
+    #else
+    #define RDKPerf RDKPerfInProc
+    #endif // PERF_REMOTE
+#endif // NO_PERF
 
 extern "C" {
 

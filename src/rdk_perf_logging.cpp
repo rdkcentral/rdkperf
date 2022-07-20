@@ -58,6 +58,8 @@ static void __attribute__((destructor)) LogModuleTerminate();
 //  using __attribute__((constructor))
 static void LogModuleInit()
 {
+#ifndef NO_PERF
+#error HI_THERE
     LOG(eWarning, "RDK Perf Logging initialize extending logging set to %d\n", s_VerboseLog);
     const char *env_log_level = getenv("RDKPER_EXTENDED_LOGGING");
     if(env_log_level != NULL &&
@@ -65,11 +67,13 @@ static void LogModuleInit()
       s_VerboseLog = true;
       LOG(eWarning, "Enabling RDKPERF extended logging %d", s_VerboseLog);
     }
-
+#endif
 }
 // This function is assigned to execute as library unload
 // using __attribute__((destructor))
 static void LogModuleTerminate()
 {
+#ifndef NO_PERF
     LOG(eWarning, "RDK Perf Logging terminate\n");
+#endif
 }
