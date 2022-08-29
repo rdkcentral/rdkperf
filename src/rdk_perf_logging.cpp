@@ -59,7 +59,6 @@ static void __attribute__((destructor)) LogModuleTerminate();
 static void LogModuleInit()
 {
 #ifndef NO_PERF
-#error HI_THERE
     LOG(eWarning, "RDK Perf Logging initialize extending logging set to %d\n", s_VerboseLog);
     const char *env_log_level = getenv("RDKPER_EXTENDED_LOGGING");
     if(env_log_level != NULL &&

@@ -32,4 +32,7 @@ ifeq ($(ENABLE_SHOW_CPU),1)
 FEATURE_FLAGS += -DPERF_SHOW_CPU
 endif
 
+# if ENABLE_NO_PERF=1 is on the make commandline
+ifeq ($(ENABLE_NO_PERF),1)
 FEATURE_FLAGS += -DNO_PERF
+endif

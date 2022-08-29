@@ -126,7 +126,6 @@ static void PerfModuleInit()
 {
     // Test to see if message queue service is running
 #ifndef NO_PERF
-#error HI_THERE
     char cmd[80] = { 0 };
     char strProcessName[PROCESS_NAMELEN];
 
