@@ -125,7 +125,6 @@ static TimerCallback*   s_timer = NULL;
 static void PerfModuleInit()
 {
     // Test to see if message queue service is running
-#ifndef NO_PERF
     char cmd[80] = { 0 };
     char strProcessName[PROCESS_NAMELEN];
 
@@ -152,14 +151,12 @@ static void PerfModuleInit()
         LOG(eWarning, "Timer already exists %X\n"), s_thread->get_id();
     }
     LOG(eTrace, "Exit init code\n");
-#endif // NO_PERF
 }
   
 // This function is assigned to execute as library unload
 // using __attribute__((destructor))
 static void PerfModuleTerminate()
 {
-#ifndef NO_PERF
     pid_t pID = getpid();
 
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
@@ -188,7 +185,6 @@ static void PerfModuleTerminate()
 #endif // PERF_REMOTE
 
     RDKPerf_DeleteMap();
-#endif
 }
 
 #ifdef NO_PERF

@@ -41,19 +41,15 @@ static void __attribute__((destructor)) PerfClockModuleTerminate();
 //  using __attribute__((constructor))
 static void PerfClockModuleInit()
 {
-#ifndef NO_PERF
     s_ticksPerSecond = sysconf(_SC_CLK_TCK);
     LOG(eWarning, "Ticks/Second = %ld\n", s_ticksPerSecond);
-#endif
 }
 
 // This function is assigned to execute as library unload
 // using __attribute__((destructor))
 static void PerfClockModuleTerminate()
 {
-#ifndef NO_PERF
     LOG(eTrace, "Terminate");
-#endif
 }
 
 PerfClock::PerfClock()
