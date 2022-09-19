@@ -33,6 +33,8 @@
 std::recursive_mutex _lock;
 
 #else // USE_LIBC_SCOPED_LOCK
+namespace RDKPERF {
+
 ScopedMutex::ScopedMutex(const char* strFN) 
 : _strFN(strFN)
 {
@@ -67,6 +69,9 @@ void ScopedMutex::InitMutex(pthread_mutex_t* pLock)
 
 pthread_mutex_t ScopedMutex::_lock;
 bool ScopedMutex::_bMutexInit = false;
+
+} // namespace RDKPerf
+
 #endif //USE_LIBC_SCOPED_LOCK
 
 

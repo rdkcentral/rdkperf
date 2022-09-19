@@ -125,7 +125,6 @@ static TimerCallback*   s_timer = NULL;
 static void PerfModuleInit()
 {
     // Test to see if message queue service is running
-    
     char cmd[80] = { 0 };
     char strProcessName[PROCESS_NAMELEN];
 
@@ -151,7 +150,6 @@ static void PerfModuleInit()
     else {
         LOG(eWarning, "Timer already exists %X\n"), s_thread->get_id();
     }
-
     LOG(eTrace, "Exit init code\n");
 }
   
@@ -189,6 +187,26 @@ static void PerfModuleTerminate()
     RDKPerf_DeleteMap();
 }
 
+#ifdef NO_PERF
+//-------------------------------------------
+RDKPerfEmpty::RDKPerfEmpty(const char* szName) 
+{
+    printf("RDKPerfEmpty --> %s\n", szName);fflush(stdout);
+    return;
+}
+RDKPerfEmpty::RDKPerfEmpty(const char* szName, uint32_t nThresholdInUS)
+{
+    printf("RDKPerfEmpty(t) --> %s\n", szName);fflush(stdout);
+    return;
+}
+void RDKPerfEmpty::SetThreshhold(uint32_t nThresholdInUS)
+{
+}
+RDKPerfEmpty::~RDKPerfEmpty()
+{
+    return;
+}
+#endif
 //-------------------------------------------
 RDKPerfInProc::RDKPerfInProc(const char* szName) 
 : m_record(szName)
