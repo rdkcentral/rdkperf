@@ -31,31 +31,43 @@
 #include <stack>
 
 #include "rdk_perf_record.h"
-#include "rdk_perf_node.h"
-#include "rdk_perf_logging.h"
+//#include "rdk_perf_node.h"
 
 #define FUNC_METRICS_START(depth)                                   \
     {                                                               \
         static uint16_t x_nIdx = 0;                                 \
         static uint64_t x_data[depth] = { 0 };                      \
         uint16_t        x_depth = depth;                            \
-        uint64_t        nStartTime = PerfNode::TimeStamp();         \
+        uint64_t        nStartTime = PerfRecord::TimeStamp();       \
 
 
 #define FUNC_METRICS_END()                                          \
         if(x_nIdx < x_depth) {                                      \
-            x_data[x_nIdx++] = PerfNode::TimeStamp() - nStartTime;  \
+            x_data[x_nIdx++] = PerfRecord::TimeStamp() - nStartTime;\
         } else {                                                    \
             uint64_t sum = 0;                                       \
             while(x_nIdx != 0) {                                    \
                 sum += x_data[--x_nIdx];                            \
             }                                                       \
-            printf("%s avg time is %0.6lf ms for %d iterations\n",     \
+            printf("%s avg time is %0.6lf ms for %d iterations\n",  \
                     __FUNCTION__, ((double)sum) / (x_depth * 1000.0), x_depth); \
         }                                                           \
     }                                                               \
 
-    
+#ifdef NO_PERF
+class RDKPerfEmpty
+{
+public:
+    RDKPerfEmpty(const char* szName, uint32_t nThresholdInUS);
+    RDKPerfEmpty(const char* szName);
+    ~RDKPerfEmpty();
+
+    void SetThreshhold(uint32_t nThresholdInUS);
+
+private:
+};
+#endif
+
 class RDKPerfInProc
 {
 public:
@@ -79,20 +91,22 @@ public:
     void SetThreshhold(uint32_t nThresholdInUS);
 
 private:
-    uint64_t TimeStamp();
-
     const char* m_szName;
     uint32_t    m_nThresholdInUS;
     uint64_t    m_StartTime;
     uint64_t    m_EndTime;
 };
 
-#ifdef PERF_REMOTE
-#define RDKPerf RDKPerfRemote
-#else
-#define RDKPerf RDKPerfInProc
-#endif // PERF_REMOTE
 
+#ifdef NO_PERF
+    #define RDKPerf RDKPerfEmpty
+#else
+    #ifdef PERF_REMOTE
+    #define RDKPerf RDKPerfRemote
+    #else
+    #define RDKPerf RDKPerfInProc
+    #endif // PERF_REMOTE
+#endif // NO_PERF
 
 extern "C" {
 

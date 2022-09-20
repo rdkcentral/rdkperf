@@ -29,6 +29,9 @@
 extern std::recursive_mutex _lock;
 #define SCOPED_LOCK()     std::lock_guard<std::recursive_mutex> lock(_lock)
 #else
+
+namespace RDKPERF {
+
 class ScopedMutex
 {
 public:
@@ -42,7 +45,8 @@ private:
 
     static pthread_mutex_t _lock;
 };
+}
+#define SCOPED_LOCK()     RDKPERF::ScopedMutex lock(__FUNCTION__)
 
-#define SCOPED_LOCK()     ScopedMutex lock(__FUNCTION__)
 #endif
 #endif //__RDK_PERF_SCOPEDLOCK_H__

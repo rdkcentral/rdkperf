@@ -98,7 +98,11 @@ public:
         m_bContinue = true;
         LOG(eWarning, "Task Started\n");
         while(m_bContinue == true) {
-            m_bContinue = Loop();
+            if(!Loop()) {
+                LOG(eWarning, "Timer loop signaled for Exit..\n");
+                m_bContinue = false;
+                break;
+            }
             LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
             sleep(TIMER_INTERVAL_SECONDS);
         }
@@ -121,7 +125,6 @@ static TimerCallback*   s_timer = NULL;
 static void PerfModuleInit()
 {
     // Test to see if message queue service is running
-    
     char cmd[80] = { 0 };
     char strProcessName[PROCESS_NAMELEN];
 
@@ -147,7 +150,6 @@ static void PerfModuleInit()
     else {
         LOG(eWarning, "Timer already exists %X\n"), s_thread->get_id();
     }
-
     LOG(eTrace, "Exit init code\n");
 }
   
@@ -158,10 +160,11 @@ static void PerfModuleTerminate()
     pid_t pID = getpid();
 
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
+    // Print report
     RDKPerf_ReportProcess(pID);
-
+    // Remove prosess from list
     RDKPerf_RemoveProcess(pID);
-
+    // Wait for timer thread cleanup
     if(s_thread != NULL && s_thread->joinable()) {
         LOG(eWarning, "Cleaning up timer thread\n");
         s_timer->StopTask();
@@ -184,6 +187,26 @@ static void PerfModuleTerminate()
     RDKPerf_DeleteMap();
 }
 
+#ifdef NO_PERF
+//-------------------------------------------
+RDKPerfEmpty::RDKPerfEmpty(const char* szName) 
+{
+    printf("RDKPerfEmpty --> %s\n", szName);fflush(stdout);
+    return;
+}
+RDKPerfEmpty::RDKPerfEmpty(const char* szName, uint32_t nThresholdInUS)
+{
+    printf("RDKPerfEmpty(t) --> %s\n", szName);fflush(stdout);
+    return;
+}
+void RDKPerfEmpty::SetThreshhold(uint32_t nThresholdInUS)
+{
+}
+RDKPerfEmpty::~RDKPerfEmpty()
+{
+    return;
+}
+#endif
 //-------------------------------------------
 RDKPerfInProc::RDKPerfInProc(const char* szName) 
 : m_record(szName)
@@ -213,7 +236,7 @@ RDKPerfRemote::RDKPerfRemote(const char* szName)
 , m_nThresholdInUS(0)
 , m_EndTime(0)
 {
-    m_StartTime = TimeStamp();
+    m_StartTime = PerfRecord::TimeStamp();
 
     // Send enter event
 #ifdef PERF_REMOTE
@@ -231,7 +254,7 @@ RDKPerfRemote::RDKPerfRemote(const char* szName, uint32_t nThresholdInUS)
 : m_szName(szName)
 , m_nThresholdInUS(nThresholdInUS)
 {
-    m_StartTime = TimeStamp();
+    m_StartTime = PerfRecord::TimeStamp();
  
      // Send enter event
 #ifdef PERF_REMOTE
@@ -257,22 +280,9 @@ void RDKPerfRemote::SetThreshhold(uint32_t nThresholdInUS)
 #endif // PERF_REMOTE    
 }
 
-uint64_t RDKPerfRemote::TimeStamp() 
-{
-    struct timeval  timeStamp;
-    uint64_t        retVal = 0;
-
-    gettimeofday(&timeStamp, NULL);
-
-    // Convert timestamp to Micro Seconds
-    retVal = (uint64_t)(((uint64_t)timeStamp.tv_sec * 1000000) + timeStamp.tv_usec);
-
-    return retVal;
-}
-
 RDKPerfRemote::~RDKPerfRemote()
 {
-    m_EndTime = TimeStamp();
+    m_EndTime = PerfRecord::TimeStamp();
 
     // Send close event
 #ifdef PERF_REMOTE
@@ -371,8 +381,6 @@ void RDKPerf_CloseProcess(pid_t pID)
     }
 #else // PERF_REMOTE
     // Find Process ID in List
-    PerfProcess*    pProcess = NULL;
-
     SCOPED_LOCK();
 
     RDKPerf_RemoveProcess(pID);
