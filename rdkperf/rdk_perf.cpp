@@ -24,7 +24,11 @@
 #include <string>
 #include <map>
 #include <thread>
+#include <mutex>
+#include <ctime>
+#include <ratio>
 #include <chrono>
+#include <condition_variable>
 
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
@@ -50,11 +54,18 @@ static void __attribute__((destructor)) PerfModuleTerminate();
 
 class TimerCallback {
 public:
+    enum SignalResult {
+        WAITING     = 0,
+        TIMEOUT     = 1,
+        EXIT_LOOP   = 2
+    };
+
     TimerCallback (void* pContext) 
     : m_Context(pContext)
     , m_bContinue(false)
     , m_nDelay(0)
     , m_nCount(0)
+    , m_current_state(WAITING)
     {
         LOG(eWarning, "Timer Created\n");
     };
@@ -63,9 +74,44 @@ public:
         LOG(eWarning, "Timer destroyed\n");
     }; 
 
+    void Signal (TimerCallback::SignalResult value)
+    {
+        std::unique_lock<std::mutex> lck(m_mtx);
+        m_current_state = value;
+        m_cv.notify_one();
+        lck.unlock();
+    }
+
+    SignalResult Wait(unsigned int time_in_seconds)
+    {
+        TimerCallback::SignalResult result;
+        std::chrono::milliseconds ms(time_in_seconds * 1000);
+
+        std::unique_lock<std::mutex> lck(m_mtx);
+
+        if(m_current_state == WAITING) {
+            if(m_cv.wait_for(lck, ms) == std::cv_status::timeout) {
+                result = TIMEOUT;
+            }
+            else {
+                result = m_current_state;
+            }
+        }
+        else {
+            // State change before the lock was called
+            result = m_current_state;
+        }
+        m_current_state = WAITING;
+
+        lck.unlock();
+
+        return result;
+    }
+
     void StopTask() {
         LOG(eWarning, "Stoping Timer Task\n");
         m_bContinue = false;
+        Signal(EXIT_LOOP);
         return;
     };
 
@@ -104,7 +150,10 @@ public:
                 break;
             }
             LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
-            sleep(TIMER_INTERVAL_SECONDS);
+            SignalResult result = Wait(TIMER_INTERVAL_SECONDS);
+            if(result == EXIT_LOOP) {
+                LOG(eWarning, "Exit task loop has been signaled\n");
+            }
         }
         LOG(eWarning, "Task Completed\n");
         return;
@@ -114,7 +163,10 @@ private:
     bool        m_bContinue; 
     uint32_t    m_nDelay;
     uint32_t    m_nCount;
-
+    // Timeout, signaling
+    TimerCallback::SignalResult m_current_state;
+    std::mutex   m_mtx;
+    std::condition_variable m_cv;
 };
 
 static std::thread*     s_thread = NULL;
