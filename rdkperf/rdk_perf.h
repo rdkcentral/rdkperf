@@ -25,6 +25,8 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#ifdef __cplusplus
+
 #include <string>
 #include <list>
 #include <map>
@@ -108,7 +110,11 @@ private:
     #endif // PERF_REMOTE
 #endif // NO_PERF
 
+#endif // __cplusplus
+
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 void RDKPerf_ReportProcess(pid_t pID);
 void RDKPerf_ReportThread(pthread_t tID);
@@ -120,6 +126,8 @@ RDKPerfHandle RDKPerfStart(const char* szName);
 void RDKPerfStop(RDKPerfHandle hPerf);
 void RDKPerfSetThreshold(RDKPerfHandle hPerf, uint32_t nThresholdInUS);
 
-} // extern "C" 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // __RDK_PERF_H__
