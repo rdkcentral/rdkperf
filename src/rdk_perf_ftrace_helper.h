@@ -24,7 +24,7 @@
 
 #define RDK_PERF_TRACE_MARKER "/sys/kernel/debug/tracing/trace_marker"
 
-void ftrace_print(const char* msg, ...)
+static inline void ftrace_print(const char* msg, ...)
 {
     va_list args;
     va_start (args, msg);
