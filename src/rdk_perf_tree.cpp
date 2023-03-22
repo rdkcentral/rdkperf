@@ -135,11 +135,12 @@ void PerfTree::CloseActiveNode(PerfNode* pTreeNode)
     return;
 }
 
-void PerfTree::ReportData()
+void PerfTree::ReportData(uint32_t msIntervalTime)
 {
     // Get the root node and walk down the tree
-    LOG(eWarning, "Printing report on %X thread named %s\n", (uint32_t)m_idThread, m_ThreadName);
-    m_rootNode->ReportData(0);
+    LOG(eWarning, "Printing report on %X thread named %s, Interval Elapsed wallClock: %lu ms\n",
+        (uint32_t)m_idThread, m_ThreadName, msIntervalTime);
+    m_rootNode->ReportData(0, false, msIntervalTime);
     
     // Update the activity monitor
     m_CountAtLastReport = m_ActivityCount;

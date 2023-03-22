@@ -30,6 +30,7 @@
 #include <list>
 #include <map>
 #include <stack>
+#include "rdk_perf_clock.h"
 
 #define PROCESS_NAMELEN 80
 
@@ -55,6 +56,7 @@ private:
     pid_t                           m_idProcess;
     char                            m_ProcessName[PROCESS_NAMELEN];
     std::map<pthread_t, PerfTree*>  m_mapThreads;
+    PerfClock                       m_clock;
 };
 
 PerfProcess* RDKPerf_FindProcess(pid_t pID);

@@ -100,7 +100,7 @@ PerfRecord::~PerfRecord()
                         ((double)deltaTime) / 1000.0,
                         ((double)stats->nTotalTime / (double)stats->nTotalCount) / 1000.0,
                         ((double)stats->nIntervalTime / (double)stats->nIntervalCount) / 1000.0);
-        m_nodeInTree->ReportData(0, true);
+        m_nodeInTree->ReportData(0, true, 0);
     }
 
     return;

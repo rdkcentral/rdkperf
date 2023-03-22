@@ -86,8 +86,8 @@ void PerfClock::SetWallClock()
 void PerfClock::SetCPU()
 {
     struct rusage data;
-    // int who = RUSAGE_SELF; 
-    int who = RUSAGE_THREAD; 
+    int who = RUSAGE_SELF; 
+    //int who = RUSAGE_THREAD; 
     if(getrusage(who, &data) == -1) {
          LOG(eError, "getrusage failure %d: %s\n", errno, strerror(errno));
     }
@@ -141,10 +141,10 @@ void PerfClock::Now(PerfClock* pClock, Operation operation)
         pClock->SetWallClock(elapsed.GetWallClock() - pClock->GetWallClock());
         pClock->SetUserCPU(elapsed.GetUserCPU() - pClock->GetUserCPU());
         pClock->SetSystemCPU(elapsed.GetSystemCPU() - pClock->GetSystemCPU());
-        LOG(eWarning, "Got Time Elapsed (computed) %0.3lf User %0.3lf System %0.3lf\n", 
+        LOG(eTrace, "Got Time Elapsed (computed) %0.3lf User %lu System %lu\n", 
             (double)pClock->GetWallClock() / 1000.0,
-            (double)pClock->GetUserCPU() / 1000.0,
-            (double)pClock->GetSystemCPU() / 1000.0);
+            pClock->GetUserCPU(),
+            pClock->GetSystemCPU());
     }
     else {
         LOG(eError, "Unknown operation mode\n");

@@ -165,6 +165,8 @@ void PerfNode::IncrementData(uint64_t deltaTime, uint64_t userCPU, uint64_t syst
 
     m_stats.nUserCPU = userCPU;
     m_stats.nSystemCPU = systemCPU;
+    m_stats.nIntervalUserCPU += userCPU;
+    m_stats.nIntervalSystemCPU += systemCPU;
     m_stats.nTotalUserCPU += userCPU;
     m_stats.nTotalSystemCPU += systemCPU;
 
@@ -173,16 +175,18 @@ void PerfNode::IncrementData(uint64_t deltaTime, uint64_t userCPU, uint64_t syst
 
 void PerfNode::ResetInterval()
 {
-    m_stats.nIntervalTime     = 0;
-    m_stats.nIntervalAvg      = 0;
-    m_stats.nIntervalMax      = 0;
-    m_stats.nIntervalMin      = INITIAL_MIN_VALUE;      // Need a large number here to get new min value
-    m_stats.nIntervalCount    = 0;
+    m_stats.nIntervalTime       = 0;
+    m_stats.nIntervalAvg        = 0;
+    m_stats.nIntervalMax        = 0;
+    m_stats.nIntervalMin        = INITIAL_MIN_VALUE;      // Need a large number here to get new min value
+    m_stats.nIntervalCount      = 0;
+    m_stats.nIntervalUserCPU    = 0;
+    m_stats.nIntervalSystemCPU  = 0;
 
     return;
 }
 
-void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
+void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta, uint32_t msIntervalTime)
 {
     char buffer[MAX_BUF_SIZE] = { 0 };
     char* ptr = &buffer[0];
@@ -195,7 +199,7 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     if(bShowOnlyDelta) {
         // Print only the current delta time data 
 #ifdef PERF_SHOW_CPU
-        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s elapsed time %0.3lf CPU User %0.3lf, System %0.3lf\n",
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s elapsed time %0.3lf ms CPU User %0.3lf ms, System %0.3lf ms\n",
                 m_stats.elementName.c_str(),
                 (double)m_stats.nLastDelta / 1000.0,
                 (double)m_stats.nUserCPU / 1000.0, (double)m_stats.nSystemCPU / 1000.0);
@@ -208,11 +212,15 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     else {
         // Print data for this node
 #ifdef PERF_SHOW_CPU
-        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s CPU User %0.3lf, System %0.3lf (Count, Max, Min, Avg) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf",
+        const float userCPU = (msIntervalTime == 0)?0.0f:m_stats.nIntervalUserCPU / (msIntervalTime * 10.0f);
+        const float systemCPU = (msIntervalTime == 0)?0.0f:m_stats.nIntervalSystemCPU/ (msIntervalTime * 10.0f);
+
+        snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max ms, Min ms, Avg ms) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf CPU User %u ms(%0.1f%%), System %u ms (%0.1f%%)",
                 m_stats.elementName.c_str(),
-                (double)m_stats.nTotalUserCPU / 1000.0 / m_stats.nTotalCount, (double)m_stats.nTotalSystemCPU / 1000.0 / m_stats.nTotalCount,
                 m_stats.nTotalCount, ((double)m_stats.nTotalMax) / 1000.0, ((double)m_stats.nTotalMin) / 1000.0, m_stats.nTotalAvg / 1000.0,
-                m_stats.nIntervalCount, ((double)m_stats.nIntervalMax) / 1000.0, ((double)m_stats.nIntervalMin) / 1000.0, m_stats.nIntervalAvg / 1000.0);
+                m_stats.nIntervalCount, ((double)m_stats.nIntervalMax) / 1000.0, ((double)m_stats.nIntervalMin) / 1000.0, m_stats.nIntervalAvg / 1000.0,
+                (uint32_t)(m_stats.nIntervalUserCPU / 1000), userCPU,
+                (uint32_t)(m_stats.nIntervalSystemCPU / 1000), systemCPU);
 #else
         snprintf(ptr, MAX_BUF_SIZE - strlen(buffer), "| %s (Count, Max, Min, Avg) Total %llu, %0.3lf, %0.3lf, %0.3lf Interval %llu, %0.3lf, %0.3lf, %0.3lf",
                 m_stats.elementName.c_str(),
@@ -225,7 +233,7 @@ void PerfNode::ReportData(uint32_t nLevel, bool bShowOnlyDelta)
     // Print data for all the children
     auto it = m_childNodes.begin();
     while(it != m_childNodes.end()) {
-        it->second->ReportData(nLevel + 1, bShowOnlyDelta);
+        it->second->ReportData(nLevel + 1, bShowOnlyDelta, msIntervalTime);
         it++;
     }
 
