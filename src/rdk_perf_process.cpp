@@ -26,6 +26,7 @@
 #include "rdk_perf_process.h"
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
+#include "rdk_perf_clock.h"
 
 static std::map<pid_t, PerfProcess*>* sp_ProcessMap;
 
@@ -141,6 +142,8 @@ PerfTree* PerfProcess::NewTree(pthread_t tID)
                     tID, it->second->GetName());
     }
 
+    PerfClock::Now(&m_clock, PerfClock::Marker);
+    
     return pTree;
 }
 
@@ -179,10 +182,26 @@ void PerfProcess::ReportData()
                   sizeof(m_ProcessName) <= PROCESS_NAMELEN ? (int)sizeof(m_ProcessName) : (int)PROCESS_NAMELEN, 
                   m_ProcessName);
     auto it = m_mapThreads.begin();
-    while(it != m_mapThreads.end()) {
-        it->second->ReportData();
-        it++;
-    }    
+
+    if(it != m_mapThreads.end()) {
+        PerfClock::Now(&m_clock, PerfClock::Elapsed);
+
+        const uint64_t msIntervalTime = m_clock.GetWallClock(PerfClock::millisecond);
+
+        const float userCPU = (m_clock.GetUserCPU(PerfClock::millisecond) * 100.0f) / (float)msIntervalTime;
+        const float systemCPU = (m_clock.GetSystemCPU(PerfClock::millisecond) * 100.0f) / (float)msIntervalTime;
+
+        LOG(eWarning, "CPU user: %llu ms (%0.1f%%) CPU system: %llu ms (%0.1f%%)\n",
+            m_clock.GetUserCPU(PerfClock::millisecond), userCPU,
+            m_clock.GetSystemCPU(PerfClock::millisecond), systemCPU);
+
+        PerfClock::Now(&m_clock, PerfClock::Marker);
+
+        while(it != m_mapThreads.end()) {
+            it->second->ReportData(msIntervalTime);
+            it++;
+        }
+    } 
     
     return;
 }

@@ -50,6 +50,8 @@ typedef struct _TimingStats
     uint64_t            nLastDelta;
     uint64_t            nUserCPU;
     uint64_t            nSystemCPU;
+    uint64_t            nIntervalUserCPU;
+    uint64_t            nIntervalSystemCPU;
     uint64_t            nTotalUserCPU;
     uint64_t            nTotalSystemCPU;
 } TimingStats;
@@ -78,7 +80,7 @@ public:
     void IncrementData(uint64_t deltaTime, uint64_t userCPU, uint64_t systemCPU);
     void ResetInterval();
 
-    void ReportData(uint32_t nLevel, bool bShowOnlyDelta = false);
+    void ReportData(uint32_t nLevel, bool bShowOnlyDelta, uint32_t msIntervalTime);
 
 private:
     pthread_t               m_idThread;

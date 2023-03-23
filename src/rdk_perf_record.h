@@ -54,7 +54,7 @@ public:
     void            SetThreshold(int32_t nUS)       { m_ThresholdInUS = (int32_t)nUS; };
     void            SetNodeInTree(PerfNode* pNode)  { m_nodeInTree = pNode; };
  
-    void            ReportData(uint32_t nLevel, bool bShowOnlyDelta = false);
+    void            ReportData(uint32_t nLevel, bool bShowOnlyDelta, uint32_t msIntervalTime = 0);
 
 private:
     pthread_t               m_idThread;

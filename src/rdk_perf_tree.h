@@ -47,7 +47,7 @@ public:
     PerfNode* AddNode(PerfRecord* pRecord);
     PerfNode* AddNode(char* szName, pthread_t tID, char* szThreadName, uint64_t nStartTime);
     void CloseActiveNode(PerfNode* pTreeNode);
-    void ReportData();
+    void ReportData(uint32_t msIntervalTime=0);
 
     bool IsInactive();
     char * GetName() { return m_ThreadName; };
