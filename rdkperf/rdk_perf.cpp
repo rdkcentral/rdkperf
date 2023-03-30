@@ -209,23 +209,30 @@ static void PerfModuleInit()
 // using __attribute__((destructor))
 static void PerfModuleTerminate()
 {
-    // TEST
-    return;
+    if(s_timer != NULL) {
+        s_timer->StopTask();
+    }
 
     pid_t pID = getpid();
 
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
+
+#if 0 // No need to print report on process exit
     // Print report
     RDKPerf_ReportProcess(pID);
+#endif    
+
     // Remove prosess from list
     RDKPerf_RemoveProcess(pID);
+
     // Wait for timer thread cleanup
     if(s_thread != NULL && s_thread->joinable()) {
         LOG(eWarning, "Cleaning up timer thread\n");
-        s_timer->StopTask();
         s_thread->join();
+
         delete s_thread;
-        delete s_timer;
+        if(s_timer != NULL) delete s_timer;
+
         s_thread = NULL;
         s_timer = NULL;
     }
