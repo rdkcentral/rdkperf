@@ -209,6 +209,9 @@ static void PerfModuleInit()
 // using __attribute__((destructor))
 static void PerfModuleTerminate()
 {
+    // TEST
+    return;
+
     pid_t pID = getpid();
 
     LOG(eWarning, "RDK Performance process terminate %X\n", pID);
