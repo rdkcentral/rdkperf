@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "rdk_perf_logging.h"
 #include "rdk_perf_msgqueue.h"
@@ -250,6 +251,7 @@ bool HandleMessage(PerfMessage* pMsg)
 
     return retVal;
 }
+
 void RunLoop(PerfMsgQueue* pQueue)
 {
     bool        bContinue       = true;
@@ -261,7 +263,7 @@ void RunLoop(PerfMsgQueue* pQueue)
         pQueue->ReceiveMessage(&msg, MESSAGE_TIMEOUT);
         //TEST
         if(msg.type == eExitQueue || msg.type == eMaxType) {
-            // Exit loop
+            LOG(eWarning, "Exit loop\n");
             bContinue = false;
         }
         else if(msg.type == eNoMessage) {
@@ -286,26 +288,43 @@ void RunLoop(PerfMsgQueue* pQueue)
     LOG(eWarning, "RunLoop exiting\n");
     return;
 }
+
+static PerfMsgQueue* s_pQueue = NULL;
+
+static void ctrlc_handler_callback(int, siginfo_t* ,void* contex)
+{
+    LOG(eWarning, "Ctrl+C pressed\n");
+    if(s_pQueue != NULL) {
+        s_pQueue->SendMessage(eExitQueue, NULL, 0, 0);
+    }
+}
+
 int main(int argc, char *argv[])
 {    
     LOG(eWarning, "Enter perfservice app %s\n", __DATE__);
+
+    // Register Ctrl+C handler
+    struct sigaction sa;
+    sa.sa_sigaction = ctrlc_handler_callback;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGINT, &sa, NULL);
 
     RDKPerf_InitializeMap();
 
     // // Does the queue exist
     if(PerfMsgQueue::IsQueueCreated(RDK_PERF_MSG_QUEUE_NAME)) {
-        // Queue exists, service is a duplicate
+        LOG(eError, "Queue exists, service is a duplicate\n");
         exit(-1);
     }
 
     // Create Queue
-    PerfMsgQueue* pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, true);
-    if(pQueue != NULL) {
+    s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, true);
+    if(s_pQueue != NULL) {
         // Have Queue, start retrieven messages
-        RunLoop(pQueue);
+        RunLoop(s_pQueue);
 
         // RunLoop exited, cleanup
-        pQueue->Release();
+        s_pQueue->Release();
     }
 
     RDKPerf_DeleteMap();
