@@ -283,7 +283,7 @@ bool PerfMsgQueue::IsQueueCreated(const char* szQueueName)
 
 int PerfMsgQueue::getSystemMaxMsg(void)
 {
-    static char* msgmax_filename = "/proc/sys/fs/mqueue/msg_max";
+    static const char* msgmax_filename = "/proc/sys/fs/mqueue/msg_max";
 
     FILE* fp = fopen(msgmax_filename, "r");
 
