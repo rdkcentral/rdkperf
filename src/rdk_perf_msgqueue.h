@@ -131,10 +131,11 @@ typedef struct _PerfMessage
 class PerfMsgQueue
 {
 public:
-    PerfMsgQueue(const char* szQueueName, bool bService);
+    PerfMsgQueue(PerfMsgQueue const &) = delete;
+    void operator=(PerfMsgQueue const &) = delete;
+
     ~PerfMsgQueue();
 
-    uint32_t AddRef();
     uint32_t Release();
 
     bool SendMessage(MessageType type, const char* szName = NULL, uint64_t nTimeStamp = 0, int32_t nThresholdInUS = -1);
@@ -143,8 +144,14 @@ public:
 
     static PerfMsgQueue* GetQueue(const char* szQueueName, bool bService);
     static bool IsQueueCreated(const char* szQueueName);
+
 private:
+    PerfMsgQueue(const char* szQueueName, bool bService);
+
+    uint32_t AddRef();
+
     static int getSystemMaxMsg(void);
+
 private:
     mqd_t               m_queue;
     struct mq_attr      m_queue_attr;
