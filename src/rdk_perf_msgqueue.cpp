@@ -51,8 +51,7 @@ PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
         flags = O_WRONLY;
     }
 
-    // m_queue = mq_open(szQueueName, flags);
-    new_attr.mq_maxmsg = 10;
+    new_attr.mq_maxmsg = getSystemMaxMsg();
     new_attr.mq_msgsize = sizeof(PerfMessage);
 
     if(bService) {
@@ -280,4 +279,27 @@ bool PerfMsgQueue::IsQueueCreated(const char* szQueueName)
     }
 
     return retVal;
+}
+
+int PerfMsgQueue::getSystemMaxMsg(void)
+{
+    static char* msgmax_filename = "/proc/sys/fs/mqueue/msg_max";
+
+    FILE* fp = fopen(msgmax_filename, "r");
+
+    if(fp == NULL) {
+        LOG(eError, "Can't open \"%s\"\n", msgmax_filename);
+        return 0;
+    }
+
+    int msg_max = 0;
+    char buffer[12];
+
+    if(fgets(buffer, 12, fp) != NULL) {
+        msg_max = atoi(buffer);
+    }else{
+        LOG(eError, "Can't parse content of \"%s\"\n", msgmax_filename);
+    }
+
+    return msg_max;
 }

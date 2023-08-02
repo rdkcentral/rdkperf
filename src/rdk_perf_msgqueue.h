@@ -144,6 +144,8 @@ public:
     static PerfMsgQueue* GetQueue(const char* szQueueName, bool bService);
     static bool IsQueueCreated(const char* szQueueName);
 private:
+    static int getSystemMaxMsg(void);
+private:
     mqd_t               m_queue;
     struct mq_attr      m_queue_attr;
     bool                m_bService;
