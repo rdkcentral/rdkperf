@@ -234,7 +234,9 @@ bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS)
 uint32_t PerfMsgQueue::AddRef()
 {
     SCOPED_LOCK();
-    m_RefCount++;
+    if(m_RefCount < UINT_MAX) {
+        m_RefCount++;
+    }
 
     return m_RefCount;
 }
