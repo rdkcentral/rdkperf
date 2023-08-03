@@ -158,6 +158,11 @@ private:
     bool                m_bService;
     char                m_szName[MAX_NAME_LEN];
     uint32_t            m_RefCount;
+    // Statistics
+    uint64_t            m_stats_msgReceived;
+    uint64_t            m_stats_msgSent;
+    uint64_t            m_stats_msgEntry;
+    uint64_t            m_stats_msgExit;
 };
 
 

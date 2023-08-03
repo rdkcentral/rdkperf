@@ -30,6 +30,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/stat.h>        /* For mode constants */
 #include <mqueue.h>
+#include <limits.h>
 #include <errno.h>
 
 static PerfMsgQueue* s_PerfQueue = NULL;
@@ -37,6 +38,10 @@ static PerfMsgQueue* s_PerfQueue = NULL;
 PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
 : m_bService(bService)
 , m_RefCount(0)
+, m_stats_msgReceived(0)
+, m_stats_msgSent(0)
+, m_stats_msgEntry(0)
+, m_stats_msgExit(0)
 {
     int             flags = 0;
     mode_t          mode = S_IRWXU | S_IRWXG | S_IRWXO;
@@ -88,6 +93,12 @@ PerfMsgQueue::~PerfMsgQueue()
     if(m_bService) {
         mq_unlink(m_szName);
     }
+
+    LOG(eWarning, "Messages Statistics\n");
+    LOG(eWarning, "\tReceived: %lu\n", m_stats_msgReceived);
+    LOG(eWarning, "\tSent: %lu\n", m_stats_msgSent);
+    LOG(eWarning, "\tEntry: %lu\n", m_stats_msgEntry);
+    LOG(eWarning, "\tExit: %lu\n", m_stats_msgExit);
 }
 
 bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nTimeStamp, int32_t nThresholdInUS)
@@ -101,6 +112,9 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
     msg.type = type;
     switch(type) {
     case eEntry:
+        if(m_stats_msgEntry < ULONG_MAX) {
+            m_stats_msgEntry++;
+        }
         msg.msg_data.entry.pID = getpid();
         msg.msg_data.entry.tID = pthread_self();
         msg.msg_data.entry.nTimeStamp = nTimeStamp;
@@ -115,6 +129,9 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
         break;
     case eExit:
+        if(m_stats_msgExit < ULONG_MAX) {
+            m_stats_msgExit++;
+        }
         msg.msg_data.exit.pID = getpid();
         msg.msg_data.exit.tID = pthread_self();
         msg.msg_data.exit.nTimeStamp = nTimeStamp;
@@ -159,6 +176,9 @@ bool PerfMsgQueue::SendMessage(PerfMessage* pMsg)
     if(result == 0) {
         // Success
         retVal = true;
+        if(m_stats_msgSent < ULONG_MAX) {
+            m_stats_msgSent++;
+        }
     }
     else {
         LOG(eError, "Unable to send message of type %d\n", pMsg->type);
@@ -223,11 +243,12 @@ bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS)
         }
     }
 
-    if (mq_getattr(m_queue, &m_queue_attr) != -1) {
-        if(m_queue_attr.mq_curmsgs > m_queue_attr.mq_maxmsg - 2) {
-            LOG(eWarning, "Queue Depth at threshold %d max %d\n", m_queue_attr.mq_curmsgs, m_queue_attr.mq_maxmsg);
+    if(retVal) {
+        if(m_stats_msgReceived < ULONG_MAX) {
+            m_stats_msgReceived++;
         }
-    }    
+    }
+
     return retVal;
 }
 
