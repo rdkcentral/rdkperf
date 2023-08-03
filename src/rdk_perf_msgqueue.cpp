@@ -241,11 +241,21 @@ uint32_t PerfMsgQueue::AddRef()
 uint32_t PerfMsgQueue::Release()
 {
     SCOPED_LOCK();
-    uint32_t retVal = --m_RefCount;
+    
+    if(m_RefCount > 0) {
+        m_RefCount--;
+    }
+    else {
+        LOG(eError, "RefCount was 0 already - not expected\n");
+    }
+    
+    uint32_t retVal = m_RefCount;
+
     if(m_RefCount == 0) {
         LOG(eWarning, "RefCount at 0, deleting Queue\n");
         delete this;
     }
+
     return retVal;
 }
 
