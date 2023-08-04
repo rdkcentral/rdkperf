@@ -57,9 +57,10 @@ PerfTree* GetTree(pid_t pID, pthread_t tID, char* szName, bool bCreate = false)
     if(pTree == NULL) {
         if(bCreate) {
             pTree = pProcess->NewTree(tID);
+            LOG(eError, "Tree created %X\n", tID);
         }
         else {
-            LOG(eError, "Tree not found %x but create not enabled\n", tID);
+            LOG(eError, "Tree not found %X but create not enabled\n", tID);
         }
     }
 
