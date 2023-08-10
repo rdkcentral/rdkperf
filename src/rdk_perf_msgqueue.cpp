@@ -101,7 +101,11 @@ PerfMsgQueue::~PerfMsgQueue()
     LOG(eWarning, "\tExit: %lu\n", m_stats_msgExit);
 }
 
+#ifdef PERF_SHOW_CPU
+bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, const TimeStamp* clockTimeStamp, int32_t nThresholdInUS)
+#else
 bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nTimeStamp, int32_t nThresholdInUS)
+#endif
 {
     bool retVal = true;
     PerfMessage msg;
@@ -117,7 +121,11 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         }
         msg.msg_data.entry.pID = getpid();
         msg.msg_data.entry.tID = pthread_self();
+#ifdef PERF_SHOW_CPU
+        // No need
+#else
         msg.msg_data.entry.nTimeStamp = nTimeStamp;
+#endif
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
         pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_NAME_LEN);
         memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
@@ -134,7 +142,16 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         }
         msg.msg_data.exit.pID = getpid();
         msg.msg_data.exit.tID = pthread_self();
+#ifdef PERF_SHOW_CPU
+        if(clockTimeStamp != nullptr) {
+            msg.msg_data.exit.clkTimeStamp = *clockTimeStamp;
+        }
+        else {
+            LOG(eError, "clockTimeStamp is null");
+        }
+#else
         msg.msg_data.exit.nTimeStamp = nTimeStamp;
+#endif
         memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
         break;
     case eReportThread:

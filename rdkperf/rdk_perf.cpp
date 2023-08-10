@@ -36,6 +36,9 @@
 #include "rdk_perf_process.h"
 #include "rdk_perf_tree.h"  // Needs to come after rdk_perf_process because of forward declaration of PerfTree
 #include "rdk_perf.h"
+#ifdef PERF_SHOW_CPU
+#include "rdk_perf_clock.h"
+#endif
 
 #include <unistd.h>
 
@@ -296,15 +299,20 @@ RDKPerfInProc::~RDKPerfInProc()
 RDKPerfRemote::RDKPerfRemote(const char* szName) 
 : m_szName(szName)
 , m_nThresholdInUS(0)
-, m_EndTime(0)
 {
+#ifndef PERF_SHOW_CPU
     m_StartTime = PerfRecord::TimeStamp();
-
+#endif
     // Send enter event
 #ifdef PERF_REMOTE
     if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
     if(s_pQueue != NULL) {
+#ifdef PERF_SHOW_CPU
+        PerfClock::Now(&m_clock, PerfClock::Marker);
+        s_pQueue->SendMessage(eEntry, m_szName, NULL, m_nThresholdInUS);
+#else
         s_pQueue->SendMessage(eEntry, m_szName, m_StartTime, m_nThresholdInUS);
+#endif
     }
     else {
         LOG(eError, "Could not get Message Queue to send perf events\n");
@@ -316,13 +324,19 @@ RDKPerfRemote::RDKPerfRemote(const char* szName, uint32_t nThresholdInUS)
 : m_szName(szName)
 , m_nThresholdInUS(nThresholdInUS)
 {
+#ifndef PERF_SHOW_CPU
     m_StartTime = PerfRecord::TimeStamp();
- 
+#endif
      // Send enter event
 #ifdef PERF_REMOTE
     if(s_pQueue == NULL) s_pQueue = PerfMsgQueue::GetQueue(RDK_PERF_MSG_QUEUE_NAME, false);
     if(s_pQueue != NULL) {
+#ifdef PERF_SHOW_CPU
+        PerfClock::Now(&m_clock, PerfClock::Marker);
+        s_pQueue->SendMessage(eEntry, m_szName, NULL, nThresholdInUS);
+#else
         s_pQueue->SendMessage(eEntry, m_szName, m_StartTime, nThresholdInUS);
+#endif
     }
     else {
         LOG(eError, "Could not get Message Queue to send perf events\n");
@@ -344,12 +358,16 @@ void RDKPerfRemote::SetThreshhold(uint32_t nThresholdInUS)
 
 RDKPerfRemote::~RDKPerfRemote()
 {
-    m_EndTime = PerfRecord::TimeStamp();
-
     // Send close event
 #ifdef PERF_REMOTE
     if(s_pQueue != NULL) {
-        s_pQueue->SendMessage(eExit, m_szName, m_EndTime - m_StartTime);
+#ifdef PERF_SHOW_CPU
+        PerfClock::Now(&m_clock, PerfClock::Elapsed);
+        s_pQueue->SendMessage(eExit, m_szName, &m_clock.GetTimeStamp(), m_nThresholdInUS);
+#else
+        const uint64_t endTime = PerfRecord::TimeStamp();
+        s_pQueue->SendMessage(eExit, m_szName, endTime - m_StartTime);
+#endif
     }
     else {
         LOG(eError, "Could not get Message Queue to send perf events\n");
