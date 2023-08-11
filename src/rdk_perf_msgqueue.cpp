@@ -128,13 +128,15 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
 #endif
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
         pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_NAME_LEN);
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        strncpy(msg.msg_data.entry.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.entry.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eThreshold:
         msg.msg_data.entry.pID = getpid();
         msg.msg_data.entry.tID = pthread_self();
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        strncpy(msg.msg_data.entry.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.entry.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eExit:
         if(m_stats_msgExit < ULONG_MAX) {
@@ -152,7 +154,8 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
 #else
         msg.msg_data.exit.nTimeStamp = nTimeStamp;
 #endif
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        strncpy(msg.msg_data.exit.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.exit.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eReportThread:
         msg.msg_data.report_thread.pID = getpid();
