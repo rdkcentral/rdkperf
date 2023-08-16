@@ -178,6 +178,11 @@ private:
     uint64_t            m_stats_msgSent;
     uint64_t            m_stats_msgEntry;
     uint64_t            m_stats_msgExit;
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    uint64_t            m_cpu_wall_us;
+    uint64_t            m_cpu_user_us;
+    uint64_t            m_cpu_system_us;
+#endif
 };
 
 

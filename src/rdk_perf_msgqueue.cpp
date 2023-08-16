@@ -42,6 +42,11 @@ PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
 , m_stats_msgSent(0)
 , m_stats_msgEntry(0)
 , m_stats_msgExit(0)
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+, m_cpu_wall_us(0)
+, m_cpu_user_us(0)
+, m_cpu_system_us(0)
+#endif
 {
     int             flags = 0;
     mode_t          mode = S_IRWXU | S_IRWXG | S_IRWXO;
@@ -99,6 +104,12 @@ PerfMsgQueue::~PerfMsgQueue()
     LOG(eWarning, "\tSent: %lu\n", m_stats_msgSent);
     LOG(eWarning, "\tEntry: %lu\n", m_stats_msgEntry);
     LOG(eWarning, "\tExit: %lu\n", m_stats_msgExit);
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    LOG(eWarning, "MQ_SEND CPU usage (microseconds):\n");
+    LOG(eWarning, "\tWall: %lu\n", m_cpu_wall_us);
+    LOG(eWarning, "\tUser: %lu\n", m_cpu_user_us);
+    LOG(eWarning, "\tSystem: %lu\n", m_cpu_system_us);
+#endif
 }
 
 #ifdef PERF_SHOW_CPU
@@ -192,7 +203,21 @@ bool PerfMsgQueue::SendMessage(PerfMessage* pMsg)
     bool            retVal      = false;
     unsigned int    nPriority   = 5;
 
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    PerfClock timer;
+    PerfClock::Now(&timer, PerfClock::Marker);
+#endif
+
     int result = mq_send(m_queue, (const char*)pMsg, sizeof(PerfMessage), nPriority);
+
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    PerfClock::Now(&timer, PerfClock::Elapsed);
+
+    m_cpu_wall_us += timer.GetWallClock();
+    m_cpu_user_us += timer.GetUserCPU();
+    m_cpu_system_us += timer.GetSystemCPU();
+#endif
+
     if(result == 0) {
         // Success
         retVal = true;
