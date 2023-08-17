@@ -105,10 +105,10 @@ PerfMsgQueue::~PerfMsgQueue()
     LOG(eWarning, "\tEntry: %lu\n", m_stats_msgEntry);
     LOG(eWarning, "\tExit: %lu\n", m_stats_msgExit);
 #if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
-    LOG(eWarning, "MQ_SEND CPU usage (microseconds):\n");
-    LOG(eWarning, "\tWall: %lu\n", m_cpu_wall_us);
-    LOG(eWarning, "\tUser: %lu\n", m_cpu_user_us);
-    LOG(eWarning, "\tSystem: %lu\n", m_cpu_system_us);
+    LOG(eWarning, "mq_send CPU usage Total microseconds (microseconds/message):\n");
+    LOG(eWarning, "\tWall: %lu (%lf)\n", m_cpu_wall_us, ((double)m_cpu_wall_us/(double)m_stats_msgSent));
+    LOG(eWarning, "\tUser: %lu (%lf)\n", m_cpu_user_us, ((double)m_cpu_user_us/(double)m_stats_msgSent));
+    LOG(eWarning, "\tSystem: %lu (%lf)\n", m_cpu_system_us, ((double)m_cpu_system_us/(double)m_stats_msgSent));
 #endif
 }
 
