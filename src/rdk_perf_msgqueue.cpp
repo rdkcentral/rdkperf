@@ -30,6 +30,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/stat.h>        /* For mode constants */
 #include <mqueue.h>
+#include <limits.h>
 #include <errno.h>
 
 static PerfMsgQueue* s_PerfQueue = NULL;
@@ -37,6 +38,15 @@ static PerfMsgQueue* s_PerfQueue = NULL;
 PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
 : m_bService(bService)
 , m_RefCount(0)
+, m_stats_msgReceived(0)
+, m_stats_msgSent(0)
+, m_stats_msgEntry(0)
+, m_stats_msgExit(0)
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+, m_cpu_wall_us(0)
+, m_cpu_user_us(0)
+, m_cpu_system_us(0)
+#endif
 {
     int             flags = 0;
     mode_t          mode = S_IRWXU | S_IRWXG | S_IRWXO;
@@ -51,8 +61,7 @@ PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
         flags = O_WRONLY;
     }
 
-    // m_queue = mq_open(szQueueName, flags);
-    new_attr.mq_maxmsg = 10;
+    new_attr.mq_maxmsg = getSystemMaxMsg();
     new_attr.mq_msgsize = sizeof(PerfMessage);
 
     if(bService) {
@@ -89,9 +98,25 @@ PerfMsgQueue::~PerfMsgQueue()
     if(m_bService) {
         mq_unlink(m_szName);
     }
+
+    LOG(eWarning, "Messages Statistics\n");
+    LOG(eWarning, "\tReceived: %lu\n", m_stats_msgReceived);
+    LOG(eWarning, "\tSent: %lu\n", m_stats_msgSent);
+    LOG(eWarning, "\tEntry: %lu\n", m_stats_msgEntry);
+    LOG(eWarning, "\tExit: %lu\n", m_stats_msgExit);
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    LOG(eWarning, "mq_send CPU usage Total microseconds (microseconds/message):\n");
+    LOG(eWarning, "\tWall: %lu (%lf)\n", m_cpu_wall_us, ((double)m_cpu_wall_us/(double)m_stats_msgSent));
+    LOG(eWarning, "\tUser: %lu (%lf)\n", m_cpu_user_us, ((double)m_cpu_user_us/(double)m_stats_msgSent));
+    LOG(eWarning, "\tSystem: %lu (%lf)\n", m_cpu_system_us, ((double)m_cpu_system_us/(double)m_stats_msgSent));
+#endif
 }
 
+#ifdef PERF_SHOW_CPU
+bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, const TimeStamp* clockTimeStamp, int32_t nThresholdInUS)
+#else
 bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nTimeStamp, int32_t nThresholdInUS)
+#endif
 {
     bool retVal = true;
     PerfMessage msg;
@@ -102,24 +127,46 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
     msg.type = type;
     switch(type) {
     case eEntry:
+        if(m_stats_msgEntry < ULONG_MAX) {
+            m_stats_msgEntry++;
+        }
         msg.msg_data.entry.pID = getpid();
         msg.msg_data.entry.tID = pthread_self();
+#ifdef PERF_SHOW_CPU
+        // No need
+#else
         msg.msg_data.entry.nTimeStamp = nTimeStamp;
+#endif
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
         pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_NAME_LEN);
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        strncpy(msg.msg_data.entry.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.entry.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eThreshold:
         msg.msg_data.entry.pID = getpid();
         msg.msg_data.entry.tID = pthread_self();
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        strncpy(msg.msg_data.entry.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.entry.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eExit:
+        if(m_stats_msgExit < ULONG_MAX) {
+            m_stats_msgExit++;
+        }
         msg.msg_data.exit.pID = getpid();
         msg.msg_data.exit.tID = pthread_self();
+#ifdef PERF_SHOW_CPU
+        if(clockTimeStamp != nullptr) {
+            msg.msg_data.exit.clkTimeStamp = *clockTimeStamp;
+        }
+        else {
+            LOG(eError, "clockTimeStamp is null");
+        }
+#else
         msg.msg_data.exit.nTimeStamp = nTimeStamp;
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+#endif
+        strncpy(msg.msg_data.exit.szName, szName, MAX_NAME_LEN);
+        msg.msg_data.exit.szName[MAX_NAME_LEN - 1] = 0;
         break;
     case eReportThread:
         msg.msg_data.report_thread.pID = getpid();
@@ -156,10 +203,27 @@ bool PerfMsgQueue::SendMessage(PerfMessage* pMsg)
     bool            retVal      = false;
     unsigned int    nPriority   = 5;
 
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    PerfClock timer;
+    PerfClock::Now(&timer, PerfClock::Marker);
+#endif
+
     int result = mq_send(m_queue, (const char*)pMsg, sizeof(PerfMessage), nPriority);
+
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    PerfClock::Now(&timer, PerfClock::Elapsed);
+
+    m_cpu_wall_us += timer.GetWallClock();
+    m_cpu_user_us += timer.GetUserCPU();
+    m_cpu_system_us += timer.GetSystemCPU();
+#endif
+
     if(result == 0) {
         // Success
         retVal = true;
+        if(m_stats_msgSent < ULONG_MAX) {
+            m_stats_msgSent++;
+        }
     }
     else {
         LOG(eError, "Unable to send message of type %d\n", pMsg->type);
@@ -224,29 +288,42 @@ bool PerfMsgQueue::ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS)
         }
     }
 
-    if (mq_getattr(m_queue, &m_queue_attr) != -1) {
-        if(m_queue_attr.mq_curmsgs > m_queue_attr.mq_maxmsg - 2) {
-            LOG(eWarning, "Queue Depth at threshold %d max %d\n", m_queue_attr.mq_curmsgs, m_queue_attr.mq_maxmsg);
+    if(retVal) {
+        if(m_stats_msgReceived < ULONG_MAX) {
+            m_stats_msgReceived++;
         }
-    }    
+    }
+
     return retVal;
 }
 
 uint32_t PerfMsgQueue::AddRef()
 {
     SCOPED_LOCK();
-    m_RefCount++;
+    if(m_RefCount < UINT_MAX) {
+        m_RefCount++;
+    }
 
     return m_RefCount;
 }
 uint32_t PerfMsgQueue::Release()
 {
     SCOPED_LOCK();
-    uint32_t retVal = --m_RefCount;
+    
+    if(m_RefCount > 0) {
+        m_RefCount--;
+    }
+    else {
+        LOG(eError, "RefCount was 0 already - not expected\n");
+    }
+    
+    uint32_t retVal = m_RefCount;
+
     if(m_RefCount == 0) {
         LOG(eWarning, "RefCount at 0, deleting Queue\n");
         delete this;
     }
+
     return retVal;
 }
 
@@ -280,4 +357,27 @@ bool PerfMsgQueue::IsQueueCreated(const char* szQueueName)
     }
 
     return retVal;
+}
+
+int PerfMsgQueue::getSystemMaxMsg(void)
+{
+    static const char* msgmax_filename = "/proc/sys/fs/mqueue/msg_max";
+
+    FILE* fp = fopen(msgmax_filename, "r");
+
+    if(fp == NULL) {
+        LOG(eError, "Can't open \"%s\"\n", msgmax_filename);
+        return 0;
+    }
+
+    int msg_max = 0;
+    char buffer[12];
+
+    if(fgets(buffer, 12, fp) != NULL) {
+        msg_max = atoi(buffer);
+    }else{
+        LOG(eError, "Can't parse content of \"%s\"\n", msgmax_filename);
+    }
+
+    return msg_max;
 }

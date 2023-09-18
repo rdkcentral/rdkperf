@@ -25,6 +25,12 @@
 #include <string.h>
 #include <sys/time.h>      // time_t
 
+typedef struct _TimeStamp
+{
+    uint64_t    wallClock;
+    uint64_t    userCPU;
+    uint64_t    systemCPU;
+} TimeStamp;
 
 class PerfClock
 {
@@ -38,13 +44,6 @@ public:
         microsecond     = 1,
         millisecond     = 1000,
     } TimeUnit;
-
-    typedef struct _TimeStamp
-    {
-        uint64_t    wallClock;
-        uint64_t    userCPU;
-        uint64_t    systemCPU;  
-    } TimeStamp;
     
     PerfClock(TimeStamp* pTS);
     PerfClock();
@@ -63,6 +62,8 @@ public:
     
     static PerfClock* Now();
     static void Now(PerfClock* pClock, Operation operation = Marker);
+
+    const TimeStamp& GetTimeStamp() const;
 
 private:
     uint64_t ConvertToUS(time_t sec, time_t usec);

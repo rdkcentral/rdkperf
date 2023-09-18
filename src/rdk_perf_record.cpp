@@ -52,7 +52,7 @@ PerfRecord::PerfRecord(std::string elementName)
         // no existing PID in map
         pProcess = new PerfProcess(pID);
         RDKPerf_InsertProcess(pID, pProcess);
-        LOG(eWarning, "Creating new process element %X for elemant %s\n", pProcess, m_elementName.c_str());
+        LOG(eWarning, "Creating new process element %X for element %s\n", pProcess, m_elementName.c_str());
     }
 
 #ifdef USE_TIMESTAMP
