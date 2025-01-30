@@ -32,6 +32,7 @@
 #include <map>
 #include <stack>
 
+#include "rdk_perf_latency.h"
 #include "rdk_perf_record.h"
 //#include "rdk_perf_node.h"
 

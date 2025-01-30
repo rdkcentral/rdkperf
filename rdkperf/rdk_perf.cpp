@@ -247,6 +247,8 @@ static void PerfModuleTerminate()
 #endif // PERF_REMOTE
 
     RDKPerf_DeleteMap();
+
+    return;
 }
 
 #ifdef NO_PERF
