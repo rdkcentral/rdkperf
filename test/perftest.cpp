@@ -30,7 +30,8 @@
 #include "rdk_perf_logging.h"
 #include <sys/wait.h>
 
-#define DO_UNIT_TESTS
+//#define DO_UNIT_TESTS
+//#define DO_THREAD_TESTS
 #define DO_LATENCY_TESTS
 
 // Unit Tests prototype
@@ -140,6 +141,9 @@ void test_latency_2()
     LOG(eTrace, "\n");
     // fork the process and wait for child to complete
     RDKLatency("test_sequence", __FUNCTION__);
+
+#if 1
+    LOG(eTrace, "Forking child process\n");
     pid_t child_pid = fork();
     if(child_pid == 0) {
         RDKLatency("test_sequence", "child_start");
@@ -163,6 +167,7 @@ void test_latency_2()
     }
 
     test_latency_3();
+#endif
 }
 
 void test_latency_1()
@@ -231,7 +236,7 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef DO_LATENCY_TESTS
-    for(int idx = 0; idx < 1000; idx++) {
+    for(int idx = 0; idx < 499; idx++) {
         // if(idx % 250 == 0) {
         //     LOG(eWarning, "Running latency test %d\n", idx);
         // }

@@ -19,6 +19,7 @@
 #ifndef __RDK_PERF_LATENCY_DATA_H__
 #define __RDK_PERF_LATENCY_DATA_H__
 
+
 #include <stdint.h>
 #include <string>
 
@@ -26,15 +27,8 @@
 #define MAX_LOCATIONS 100
 #define MAX_TIME_STAMPS 25
 #define MAX_NAME_LEN 64
-#define INVALID_TIMESTAMP 0
-#define INVALID_OFFSET -1
-
-typedef struct Sequence_s
-{
-    char        name[MAX_NAME_LEN];
-    int32_t     location_offset;
-    uint64_t    rootTimeStamp; // root timestamp in microseconds, updated each time the first location is recorded
-} Sequence;
+#define INVALID_TIMESTAMP (uint64_t)0
+#define INVALID_OFFSET (int32_t)-1
 
 typedef struct CircBufferRecord_s
 {
@@ -50,6 +44,15 @@ typedef struct CircBufferObject_s
     uint32_t            tail;
     uint32_t            currentSize;
 } CircBufferObject;
+
+
+typedef struct Sequence_s
+{
+    char        name[MAX_NAME_LEN];
+    int32_t     location_offset;
+    uint8_t     timeStampCirBuffer[sizeof(CircBufferObject)];   // Array of root timestamps for the sequence
+    //uint64_t    rootTimeStamp; // root timestamp in microseconds, updated each time the first location is recorded
+} Sequence;
 
 typedef struct Location_s
 {

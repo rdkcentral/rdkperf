@@ -25,7 +25,9 @@
 #include <sys/time.h>
 
 #include "rdk_perf_latency_data.h"
+#include "rdk_perf_circularbuffer.h"
 
+#ifdef USE_CIRCULAR_BUFFER
 // Circular Buffer (CoPilot Implementation)
 class CircularBuffer {
 public:
@@ -49,6 +51,7 @@ public:
 private:
     CircBufferObject* circBuffer;
 };
+#endif // USE_CIRCULAR_BUFFER
 
 #if NEED_PREALLOCATED_MAP
 class PreallocatedMap 

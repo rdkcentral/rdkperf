@@ -129,6 +129,8 @@ bool PerfSequence::GetSequence(const char* sequenceName)
                 strncpy(_sequences[i].name, sequenceName, MAX_NAME_LEN);
                 LOG(eTrace, "Added sequence %s\n", _sequences[i].name);
                 _sequences[i].location_offset = INVALID_OFFSET;
+                // Initialize the timestamp circular buffer
+                CircularBuffer rootTimeStamps(&_sequences[i].timeStampCirBuffer[0], MAX_TIME_STAMPS);
                 _current_sequence = &_sequences[i];
                 retVal = true;
                 break;
@@ -247,7 +249,7 @@ void PerfSequence::SetCurrentLocation(uint32_t locationOffset)
         delete _current_location;
         _current_location = nullptr;
     }
-    if(locationOffset != INVALID_OFFSET) {
+    if(locationOffset != (uint32_t)INVALID_OFFSET) {
         _current_location = new PerfLocation(locationOffset);
     }
 }

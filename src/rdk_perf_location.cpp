@@ -18,6 +18,8 @@
 
 #include "rdk_perf_location.h"
 #include "rdk_perf_logging.h"
+#include "rdk_perf_circularbuffer.h"
+
 #include <algorithm>
 #include <cstring>
 
@@ -30,7 +32,7 @@
 
 void* _locations = nullptr;
 
-
+#if USE_CIRCULAR_BUFFER
 // Circular Buffer (CoPilot Implementation)
 CircularBuffer::CircularBuffer()
 : circBuffer(nullptr)
@@ -111,8 +113,10 @@ bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const
     }
     
     if (empty()) {
+        LOG(eWarning, "Buffer is empty\n");
         return false; // Buffer is empty
     }
+
     key = circBuffer->records[circBuffer->tail].key;
     value = circBuffer->records[circBuffer->tail].value;
     return true;
@@ -158,6 +162,8 @@ size_t CircularBuffer::recordSize()
 {
     return sizeof(CircBufferRecord);
 }
+
+#endif // USE_CIRCULAR_BUFFER
 
 #ifdef NEED_PREALLOCATED_MAP
 // PreAllocated Map
@@ -338,8 +344,31 @@ bool PerfLocation::AddTimeStamp(uint64_t timeStamp)
     // Insert the timestamp
     retVal = _timeStamps.push(_location->count, timeStamp);
 
+    // Is this the first location in the sequence?
+    if(_location->parent_offset == INVALID_OFFSET) {
+        // If so, set the root timestamp in the sequence
+        if(_location->sequence != nullptr) {
+            CircularBuffer rootTimeStamps;
+            rootTimeStamps.initialize_with_exiting_memory(&_location->sequence->timeStampCirBuffer[0], MAX_TIME_STAMPS);
+            // Add the timestamp to the root timestamps
+            if(!rootTimeStamps.push(_location->count, timeStamp)) {
+                LOG(eError, "Failed to add root timestamp for sequence %s\n", _location->sequence->name);
+            }
+            else {
+                LOG(eTrace, "Added root timestamp %lu for sequence %s at count %ld\n", timeStamp, _location->sequence->name, _location->count);
+            }
+        }
+        else {
+            LOG(eError, "No sequence for this location\n");
+        }
+    }
+
     // Get the root time stamp
     uint64_t rootTimeStamp = GetRootTimeStamp(_location->count);
+    if(rootTimeStamp == INVALID_TIMESTAMP) {
+        LOG(eError, "Root timestamp not found\n");
+        return false;
+    }
 
     // Get the matching parent time stamp
     if(_location->parent_offset != INVALID_OFFSET) {
@@ -354,6 +383,7 @@ bool PerfLocation::AddTimeStamp(uint64_t timeStamp)
 
             uint64_t rootDiff = (uint64_t)(timeStamp - rootTimeStamp);
             // Update the total elapsed time
+            LOG(eTrace, "Root timestamp %lu, root diff %lf\n", rootTimeStamp, rootDiff);
             _location->total_elapsed +=  rootDiff;
 
             // Update the min
@@ -365,9 +395,9 @@ bool PerfLocation::AddTimeStamp(uint64_t timeStamp)
                 _location->max = diff;
             }
 
-            LOG(eTrace, "Total %lu, Avg %lf Min %lu, Max %lu\n", 
-                        _location->total, (double)(_location->total / (_location->count + 1)), 
-                        _location->min, _location->max);
+            LOG(eTrace, "Count %d Total %lu, Avg %lf Min %lu, Max %lu elapsed %lf\n", 
+                        _location->count,  _location->total, (double)(_location->total / (_location->count + 1)), 
+                        _location->min, _location->max, (double)(_location->total_elapsed / (_location->count + 1)));
 
             // Since there is a match remove the parent timestamp from the map
             parent.RemoveTimeStamp(_location->count);
@@ -387,13 +417,19 @@ uint64_t PerfLocation::GetTimeStamp(uint32_t count)
 {
     uint64_t timeStamp = 0;
     uint32_t index = 0;
-    _timeStamps.peek(index, timeStamp);
-    if(index != count) {
-        LOG(eError, "Invalid index %u, expected %u\n", index, count);
-        timeStamp = INVALID_TIMESTAMP;
+    if(_timeStamps.peek(index, timeStamp)) {
+        LOG(eTrace, "Peeked timestamp %lu for count %u at index %u\n", timeStamp, count, index);
+        if(index != count) {
+            LOG(eError, "Invalid index %u, expected %u\n", index, count);
+            timeStamp = INVALID_TIMESTAMP;
+        }
+        else {
+            LOG(eTrace, "Found timestamp %lu for count %u\n", timeStamp, count);
+        }
     }
     else {
-        LOG(eTrace, "Found timestamp %lu for count %u\n", timeStamp, count);
+        LOG(eError, "Failed to peek timestamp for count %u\n", count);
+        timeStamp = INVALID_TIMESTAMP;
     }
     return timeStamp;
 }
@@ -404,8 +440,19 @@ uint64_t PerfLocation::GetRootTimeStamp(uint32_t count)
         return INVALID_TIMESTAMP;
     }
 
-    PerfLocation location(_location->sequence->location_offset);
-    return location.GetTimeStamp(count);
+    // Get the root timestamps from the sequence
+    CircularBuffer rootTimeStamps;
+    rootTimeStamps.initialize_with_exiting_memory(&_location->sequence->timeStampCirBuffer[0], MAX_TIME_STAMPS);
+    uint64_t rootTimeStamp = 0;
+    if(!rootTimeStamps.find(count, rootTimeStamp)) {
+        LOG(eError, "Failed to find root timestamp for count %u\n", count);
+        return INVALID_TIMESTAMP;
+    }
+    LOG(eTrace, "Found root timestamp %lu for count %u\n", rootTimeStamp, count);
+    return rootTimeStamp;
+
+    // PerfLocation location(_location->sequence->location_offset);
+    // return location.GetTimeStamp(count);
 
 }
 

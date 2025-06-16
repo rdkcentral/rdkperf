@@ -59,7 +59,7 @@ static void __attribute__((destructor)) LogModuleTerminate();
 static void LogModuleInit()
 {
     LOG(eWarning, "RDK Perf Logging initialize extending logging set to %d\n", s_VerboseLog);
-    const char *env_log_level = getenv("RDKPER_EXTENDED_LOGGING");
+    const char *env_log_level = getenv("RDKPERF_EXTENDED_LOGGING");
     if(env_log_level != NULL &&
        strncasecmp(env_log_level, "true", strlen("true")) == 0) {
       s_VerboseLog = true;
