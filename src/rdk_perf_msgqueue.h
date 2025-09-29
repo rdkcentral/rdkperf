@@ -29,6 +29,9 @@
 
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
+#ifdef PERF_SHOW_CPU
+#include "rdk_perf_clock.h"
+#endif
 
 #include <unistd.h>
 #include <fcntl.h>           /* For O_* constants */
@@ -67,7 +70,11 @@ typedef struct _EntryMessage
     pthread_t           tID;
     char                szName[MAX_NAME_LEN];
     char                szThreadName[MAX_NAME_LEN];
+#ifdef PERF_SHOW_CPU
+    // No need
+#else
     uint64_t            nTimeStamp;
+#endif
     int32_t             nThresholdInUS;
 } EntryMessage;
 
@@ -76,7 +83,11 @@ typedef struct _ExitMessage
     pid_t               pID;
     pthread_t           tID;
     char                szName[MAX_NAME_LEN];
+#ifdef PERF_SHOW_CPU
+    TimeStamp clkTimeStamp;
+#else
     uint64_t            nTimeStamp;
+#endif
 } ExitMessage;
 
 typedef struct _ThresholdMessage 
@@ -131,24 +142,47 @@ typedef struct _PerfMessage
 class PerfMsgQueue
 {
 public:
-    PerfMsgQueue(const char* szQueueName, bool bService);
+    PerfMsgQueue(PerfMsgQueue const &) = delete;
+    void operator=(PerfMsgQueue const &) = delete;
+
     ~PerfMsgQueue();
 
-    uint32_t AddRef();
     uint32_t Release();
 
+#ifdef PERF_SHOW_CPU
+    bool SendMessage(MessageType type, const char* szName = NULL, const TimeStamp* clockTimeStamp = nullptr, int32_t nThresholdInUS = -1);
+#else
     bool SendMessage(MessageType type, const char* szName = NULL, uint64_t nTimeStamp = 0, int32_t nThresholdInUS = -1);
+#endif
     bool SendMessage(PerfMessage* pMsg);
     bool ReceiveMessage(PerfMessage* pMsg, int32_t nTimeoutInMS = 0);
 
     static PerfMsgQueue* GetQueue(const char* szQueueName, bool bService);
     static bool IsQueueCreated(const char* szQueueName);
+
+private:
+    PerfMsgQueue(const char* szQueueName, bool bService);
+
+    uint32_t AddRef();
+
+    static int getSystemMaxMsg(void);
+
 private:
     mqd_t               m_queue;
     struct mq_attr      m_queue_attr;
     bool                m_bService;
     char                m_szName[MAX_NAME_LEN];
     uint32_t            m_RefCount;
+    // Statistics
+    uint64_t            m_stats_msgReceived;
+    uint64_t            m_stats_msgSent;
+    uint64_t            m_stats_msgEntry;
+    uint64_t            m_stats_msgExit;
+#if defined(MEASURE_MQ_SEND_USAGE) && defined(PERF_SHOW_CPU)
+    uint64_t            m_cpu_wall_us;
+    uint64_t            m_cpu_user_us;
+    uint64_t            m_cpu_system_us;
+#endif
 };
 
 

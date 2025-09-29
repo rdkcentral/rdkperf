@@ -34,6 +34,9 @@
 
 #include "rdk_perf_record.h"
 //#include "rdk_perf_node.h"
+#ifdef PERF_SHOW_CPU
+#include "rdk_perf_clock.h"
+#endif
 
 #define FUNC_METRICS_START(depth)                                   \
     {                                                               \
@@ -95,8 +98,11 @@ public:
 private:
     const char* m_szName;
     uint32_t    m_nThresholdInUS;
+#ifdef PERF_SHOW_CPU
+    PerfClock   m_clock;
+#else
     uint64_t    m_StartTime;
-    uint64_t    m_EndTime;
+#endif
 };
 
 
