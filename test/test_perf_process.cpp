@@ -119,12 +119,33 @@ TEST_F(PerfProcessTest, MultipleThreads) {
     PerfProcess process(pid);
     
     pthread_t tid1 = pthread_self();
-    pthread_t tid2 = tid1 + 1; // Fake thread ID for testing
-    
+
+    // Create a second thread and get its pthread_t
+    pthread_t tid2;
+    // Use a barrier to ensure the thread stays alive until we are done
+    pthread_barrier_t barrier;
+    pthread_barrier_init(&barrier, nullptr, 2);
+
+    // Thread function that waits on the barrier
+    auto thread_func = [](void* arg) -> void* {
+        pthread_barrier_t* barrier = static_cast<pthread_barrier_t*>(arg);
+        // Wait for the main thread to finish using tid2
+        pthread_barrier_wait(barrier);
+        return nullptr;
+    };
+
+    int rc = pthread_create(&tid2, nullptr, thread_func, &barrier);
+    ASSERT_EQ(rc, 0);
+
     PerfTree* tree1 = process.NewTree(tid1);
     PerfTree* tree2 = process.NewTree(tid2);
-    
+
     ASSERT_NE(tree1, nullptr);
     ASSERT_NE(tree2, nullptr);
     EXPECT_NE(tree1, tree2);
+
+    // Release the thread and join
+    pthread_barrier_wait(&barrier);
+    pthread_join(tid2, nullptr);
+    pthread_barrier_destroy(&barrier);
 }
