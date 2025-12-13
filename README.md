@@ -76,6 +76,29 @@ In C
 
 ## How to build
 
+To build the RDKPerf library and test suite:
+
+    make clean
+    make
+
+This will build the libraries in the `build/` directory and compile the test suite.
+
+### Running Tests
+
+To run the comprehensive test suite:
+
+    export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
+    ./build/rdkperf_tests
+
+The test suite includes 74 tests covering:
+- Core component functionality (PerfClock, PerfRecord, PerfNode, PerfTree, PerfProcess)
+- Main API (both C++ and C interfaces)
+- Instrumentation overhead measurements
+
+See [test/README.md](test/README.md) for detailed test documentation.
+
+### Integration
+
 Add the header file to any module that needs instrumentation.
 
      #include "rdk_perf.h"

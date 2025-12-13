@@ -26,6 +26,10 @@ all:
 	@for i in $(SUBDIRS); do \
 	echo "make all in $$i..."; \
 	(cd $$i; $(MAKE) $(MFLAGS)); done
+
+test: all
+	@echo "Running RDKPerf test suite..."
+	@export LD_LIBRARY_PATH=$(BUILD_DIR):$$LD_LIBRARY_PATH && $(BUILD_DIR)/rdkperf_tests
  
 clean:
 	@for i in $(SUBDIRS); do \
