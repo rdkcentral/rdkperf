@@ -25,24 +25,28 @@ CFLAGS = -std=c99 $(CXXFLAGS)
 
 INCLUDES += \
 	-I$(PWD)/../src \
-	-I$(PWD)/../rdkperf
+	-I$(PWD)/../rdkperf \
+	-I/usr/src/googletest/googletest/include
 
 # Libraries to load
 LD_FLAGS =  \
     -lpthread -lstdc++
 
 LD_FLAGS += -L$(BUILD_DIR) -lrdkperf -lperftool
+LD_FLAGS += -lgtest -lgtest_main
 
-NAME = perftest
+NAME = rdkperf_tests
 
 SRC_DIRS = .
 
 DIR_CREATE = @mkdir -p $(@D)
 
 # Find all the C and C++ files we want to compile
-SRCS := $(shell find $(SRC_DIRS) -name \*.cpp -or -name \*.c)
+SRCS := $(shell find $(SRC_DIRS) -name test_\*.cpp -or -name test_main.cpp)
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+
+all: $(BUILD_DIR)/$(NAME)
 
 $(BUILD_DIR)/%.c.o: %.c
 	$(DIR_CREATE)
@@ -53,7 +57,11 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LD_FLAGS) 
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(LD_FLAGS) 
+
+test: $(BUILD_DIR)/$(NAME)
+	@echo "Running tests..."
+	$(BUILD_DIR)/$(NAME)
 
 clean:
 	rm -f $(OBJS)
