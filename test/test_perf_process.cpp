@@ -29,7 +29,8 @@ protected:
     }
 
     void TearDown() override {
-        // Cleanup
+        // Clean up the process map between tests
+        RDKPerf_DeleteMap();
     }
 };
 

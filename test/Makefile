@@ -23,10 +23,13 @@ CXXFLAGS += $(FEATURE_FLAGS)
 
 CFLAGS = -std=c99 $(CXXFLAGS)
 
+# Use GTEST_INCLUDE environment variable if set, otherwise try common paths
+GTEST_INCLUDE ?= $(shell pkg-config --cflags gtest 2>/dev/null || echo "-I/usr/src/googletest/googletest/include")
+
 INCLUDES += \
 	-I$(PWD)/../src \
 	-I$(PWD)/../rdkperf \
-	-I/usr/src/googletest/googletest/include
+	$(GTEST_INCLUDE)
 
 # Libraries to load
 LD_FLAGS =  \
@@ -42,7 +45,8 @@ SRC_DIRS = .
 DIR_CREATE = @mkdir -p $(@D)
 
 # Find all the C and C++ files we want to compile
-SRCS := $(shell find $(SRC_DIRS) -name test_\*.cpp -or -name test_main.cpp)
+# Note: test_main.cpp removed - using gtest_main library instead
+SRCS := $(shell find $(SRC_DIRS) -name test_\*.cpp)
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 

@@ -6,7 +6,6 @@ This directory contains a comprehensive test suite for RDKPerf using Google Test
 
 The test suite consists of multiple test files that cover all major components of the RDKPerf library:
 
-- **test_main.cpp**: Main entry point for the test suite
 - **test_perf_clock.cpp**: Tests for PerfClock (timing and CPU measurement)
 - **test_perf_record.cpp**: Tests for PerfRecord (performance record management)
 - **test_perf_node.cpp**: Tests for PerfNode (tree node operations and statistics)
@@ -14,6 +13,8 @@ The test suite consists of multiple test files that cover all major components o
 - **test_perf_process.cpp**: Tests for PerfProcess (process-level operations)
 - **test_rdk_perf.cpp**: Tests for the main RDKPerf API (both C++ and C interfaces)
 - **test_instrumentation_overhead.cpp**: Tests that quantify the cost of instrumentation
+
+The test suite uses gtest's main() function (via `-lgtest_main`), so no custom main is needed.
 
 ## Building the Tests
 
