@@ -63,7 +63,8 @@ TEST_F(PerfClockTest, TimeUnitsConversion) {
     uint64_t milliseconds = clock.GetWallClock(PerfClock::millisecond);
     
     // Milliseconds should be roughly 1/1000 of microseconds
-    EXPECT_NEAR(microseconds / 1000.0, milliseconds, 5.0);
+    const double TIMING_TOLERANCE_MS = 5.0;
+    EXPECT_NEAR(microseconds / 1000.0, milliseconds, TIMING_TOLERANCE_MS);
 }
 
 TEST_F(PerfClockTest, CPUTimeMeasurement) {
