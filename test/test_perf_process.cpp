@@ -83,7 +83,8 @@ TEST_F(PerfProcessTest, FindProcess) {
     pid_t pid = getpid();
     PerfProcess* found = RDKPerf_FindProcess(pid);
     // May be null or non-null depending on prior tests
-    EXPECT_TRUE(found != nullptr || found == nullptr);
+    // Just verify it doesn't crash
+    SUCCEED();
 }
 
 TEST_F(PerfProcessTest, GetMapSize) {
