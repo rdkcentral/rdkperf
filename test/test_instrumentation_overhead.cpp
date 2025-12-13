@@ -228,6 +228,8 @@ TEST_F(InstrumentationOverheadTest, MemoryOverhead) {
     RDKPerf* perfs[count];
     
     std::cout << "\n=== Memory Overhead Estimate ===" << std::endl;
+    std::cout << "NOTE: This measures sizeof() for the RDKPerf object wrapper." << std::endl;
+    std::cout << "Actual runtime memory includes heap allocations for tree structures." << std::endl;
     std::cout << "Creating " << count << " RDKPerf instances..." << std::endl;
     
     for (int i = 0; i < count; i++) {
@@ -235,8 +237,9 @@ TEST_F(InstrumentationOverheadTest, MemoryOverhead) {
     }
     
     std::cout << "RDKPerf instances created successfully" << std::endl;
-    std::cout << "Approximate memory per instance: " << sizeof(RDKPerf) << " bytes" << std::endl;
-    std::cout << "Total for " << count << " instances: " << sizeof(RDKPerf) * count << " bytes" << std::endl;
+    std::cout << "Object size per instance (sizeof): " << sizeof(RDKPerf) << " bytes" << std::endl;
+    std::cout << "Total object size for " << count << " instances: " << sizeof(RDKPerf) * count << " bytes" << std::endl;
+    std::cout << "Additional heap memory for trees/nodes is allocated dynamically." << std::endl;
     
     // Clean up
     for (int i = 0; i < count; i++) {

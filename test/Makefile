@@ -59,7 +59,9 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 $(BUILD_DIR)/$(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(LD_FLAGS) 
 
-test: $(BUILD_DIR)/$(NAME)
+# Note: The 'run-tests' target executes tests on the build system.
+# For embedded targets, build the test binary with 'make all' and deploy manually.
+run-tests: $(BUILD_DIR)/$(NAME)
 	@echo "Running tests..."
 	$(BUILD_DIR)/$(NAME)
 

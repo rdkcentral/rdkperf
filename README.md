@@ -85,10 +85,16 @@ This will build the libraries in the `build/` directory and compile the test sui
 
 ### Running Tests
 
-To run the comprehensive test suite:
+The test suite can be built with `make all`. For development systems with gtest installed:
+
+    make test
+
+Or run manually:
 
     export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
     ./build/rdkperf_tests
+
+**For embedded systems:** Build the test binary with `make all`, then deploy and run manually on the target device.
 
 The test suite includes 74 tests covering:
 - Core component functionality (PerfClock, PerfRecord, PerfNode, PerfTree, PerfProcess)

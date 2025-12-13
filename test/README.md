@@ -28,18 +28,20 @@ This will build the RDKPerf library and the test executable `build/rdkperf_tests
 
 ## Running the Tests
 
-To run all tests:
+**On development systems** (with gtest and runtime environment):
+
+```bash
+make test
+```
+
+**Manual execution** (for embedded systems, run on target after deployment):
 
 ```bash
 export LD_LIBRARY_PATH=./build:$LD_LIBRARY_PATH
 ./build/rdkperf_tests
 ```
 
-Or use the make target:
-
-```bash
-make test
-```
+**Note for embedded systems:** Build the test binary with `make all` in the project root, then deploy `build/rdkperf_tests` and required libraries to your target device for execution.
 
 ## Test Categories
 
@@ -120,8 +122,9 @@ These tests quantify the performance cost of using RDKPerf instrumentation on th
    - Verifies threshold feature is lightweight
 
 6. **Memory Overhead**
-   - Estimates memory consumption per RDKPerf instance
-   - Reports approximate memory footprint
+   - Measures sizeof() for RDKPerf object wrappers
+   - Note: Does not include dynamically allocated tree/node structures
+   - Reports object size only; actual runtime memory is higher
 
 7. **Minimal Call Overhead**
    - Measures overhead with minimal or no work
