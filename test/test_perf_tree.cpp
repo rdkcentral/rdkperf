@@ -44,7 +44,7 @@ TEST_F(PerfTreeTest, GetThreadID) {
     PerfTree tree;
     // GetThreadID may return 0 initially, or the thread ID
     pthread_t tid = tree.GetThreadID();
-    EXPECT_GE(tid, 0);
+    EXPECT_TRUE(pthread_equal(tid, pthread_self()));
 }
 
 TEST_F(PerfTreeTest, GetName) {
