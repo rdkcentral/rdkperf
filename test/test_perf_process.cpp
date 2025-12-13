@@ -90,7 +90,7 @@ TEST_F(PerfProcessTest, FindProcess) {
 TEST_F(PerfProcessTest, GetMapSize) {
     // Test that GetMapSize returns a reasonable value
     size_t size = RDKPerf_GetMapSize();
-    EXPECT_GE(size, 0);
+    EXPECT_LT(size, 10000u); // Should not be unreasonably large
 }
 
 TEST_F(PerfProcessTest, RemoveTree) {
