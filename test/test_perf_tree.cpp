@@ -42,8 +42,16 @@ TEST_F(PerfTreeTest, ConstructorDestructor) {
 
 TEST_F(PerfTreeTest, GetThreadID) {
     PerfTree tree;
-    // GetThreadID may return 0 initially, or the thread ID
     pthread_t tid = tree.GetThreadID();
+    
+    // PerfTree initializes m_idThread to 0 and only sets it when a node is added
+    // So initially it should be 0
+    EXPECT_EQ(tid, 0);
+    
+    // After adding a node, it should be set to the current thread
+    PerfRecord record("test_thread_id");
+    tree.AddNode(&record);
+    tid = tree.GetThreadID();
     EXPECT_TRUE(pthread_equal(tid, pthread_self()));
 }
 
