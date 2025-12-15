@@ -55,23 +55,38 @@ TEST_F(InstrumentationOverheadTest, ConstructorDestructorOverhead) {
     // Reduced iterations and added delays to prevent segfaults from rapid object creation
     const int iterations = 100;
     
+    std::cout << "\n[DEBUG] Starting ConstructorDestructorOverhead test" << std::endl;
+    std::cout << "[DEBUG] Iterations: " << iterations << std::endl;
+    
     // Measure time without instrumentation
+    std::cout << "[DEBUG] Measuring uninstrumented baseline..." << std::endl;
     uint64_t start_uninstrumented = GetTimestamp();
     for (int i = 0; i < iterations; i++) {
         // Empty scope, no instrumentation
     }
     uint64_t end_uninstrumented = GetTimestamp();
     uint64_t time_uninstrumented = end_uninstrumented - start_uninstrumented;
+    std::cout << "[DEBUG] Uninstrumented baseline complete: " << time_uninstrumented << " us" << std::endl;
     
     // Measure time with instrumentation
+    std::cout << "[DEBUG] Starting instrumented test..." << std::endl;
     uint64_t start_instrumented = GetTimestamp();
     for (int i = 0; i < iterations; i++) {
-        RDKPerf perf("overhead_test");
+        if (i % 10 == 0) {
+            std::cout << "[DEBUG] Iteration " << i << "/" << iterations << std::endl;
+        }
+        try {
+            RDKPerf perf("overhead_test");
+        } catch (...) {
+            std::cout << "[DEBUG] Exception caught at iteration " << i << std::endl;
+            throw;
+        }
         // Small delay between iterations to prevent resource issues
         if (i % 10 == 0) {
             usleep(1);
         }
     }
+    std::cout << "[DEBUG] Instrumented test complete" << std::endl;
     uint64_t end_instrumented = GetTimestamp();
     uint64_t time_instrumented = end_instrumented - start_instrumented;
     
