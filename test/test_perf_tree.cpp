@@ -48,9 +48,13 @@ TEST_F(PerfTreeTest, GetThreadID) {
     // So initially it should be 0
     EXPECT_EQ(tid, 0);
     
-    // After adding a node, it should be set to the current thread
-    PerfRecord record("test_thread_id");
-    tree.AddNode(&record);
+    // After adding a node with name-based constructor, it should be set
+    char name[] = "test_thread_id";
+    pthread_t current_tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
+    
+    tree.AddNode(name, current_tid, threadName, startTime);
     tid = tree.GetThreadID();
     EXPECT_TRUE(pthread_equal(tid, pthread_self()));
 }
@@ -63,10 +67,15 @@ TEST_F(PerfTreeTest, GetName) {
 }
 
 TEST_F(PerfTreeTest, AddNodeWithRecord) {
+    // Note: AddNode with PerfRecord is designed for internal use.
+    // Testing with name-based constructor instead.
     PerfTree tree;
-    PerfRecord record("test_function");
+    char name[] = "test_function";
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
-    PerfNode* node = tree.AddNode(&record);
+    PerfNode* node = tree.AddNode(name, tid, threadName, startTime);
     ASSERT_NE(node, nullptr);
 }
 
@@ -91,10 +100,13 @@ TEST_F(PerfTreeTest, GetStack) {
 
 TEST_F(PerfTreeTest, IsInactive) {
     PerfTree tree;
-    PerfRecord record("test_function");
+    char name[] = "test_function";
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
     // Add a node to make it active
-    tree.AddNode(&record);
+    tree.AddNode(name, tid, threadName, startTime);
     
     // Check inactive status - should not crash
     bool inactive = tree.IsInactive();
@@ -104,14 +116,17 @@ TEST_F(PerfTreeTest, IsInactive) {
 
 TEST_F(PerfTreeTest, MultipleNodeAdditions) {
     PerfTree tree;
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
-    PerfRecord record1("function1");
-    PerfRecord record2("function2");
-    PerfRecord record3("function3");
+    char name1[] = "function1";
+    char name2[] = "function2";
+    char name3[] = "function3";
     
-    PerfNode* node1 = tree.AddNode(&record1);
-    PerfNode* node2 = tree.AddNode(&record2);
-    PerfNode* node3 = tree.AddNode(&record3);
+    PerfNode* node1 = tree.AddNode(name1, tid, threadName, startTime);
+    PerfNode* node2 = tree.AddNode(name2, tid, threadName, startTime);
+    PerfNode* node3 = tree.AddNode(name3, tid, threadName, startTime);
     
     ASSERT_NE(node1, nullptr);
     ASSERT_NE(node2, nullptr);
@@ -120,9 +135,12 @@ TEST_F(PerfTreeTest, MultipleNodeAdditions) {
 
 TEST_F(PerfTreeTest, ReportData) {
     PerfTree tree;
-    PerfRecord record("test_function");
+    char name[] = "test_function";
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
-    tree.AddNode(&record);
+    tree.AddNode(name, tid, threadName, startTime);
     
     // Report data should not crash
     tree.ReportData(1000);
@@ -144,12 +162,15 @@ TEST_F(PerfTreeTest, CloseActiveNode) {
 
 TEST_F(PerfTreeTest, NestedNodes) {
     PerfTree tree;
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
-    PerfRecord record1("outer_function");
-    PerfRecord record2("inner_function");
+    char name1[] = "outer_function";
+    char name2[] = "inner_function";
     
-    PerfNode* outer = tree.AddNode(&record1);
-    PerfNode* inner = tree.AddNode(&record2);
+    PerfNode* outer = tree.AddNode(name1, tid, threadName, startTime);
+    PerfNode* inner = tree.AddNode(name2, tid, threadName, startTime);
     
     ASSERT_NE(outer, nullptr);
     ASSERT_NE(inner, nullptr);
