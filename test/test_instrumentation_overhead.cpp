@@ -26,7 +26,19 @@
 class InstrumentationOverheadTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Allow system to stabilize before running overhead tests
+        // Ensure RDKPerf is initialized by creating a dummy object first
+        // This ensures the library constructor has run and all globals are set up
+        std::cout << "[DEBUG] SetUp: Creating initialization object..." << std::endl;
+        try {
+            RDKPerf* init_perf = new RDKPerf("init");
+            usleep(5000); // Allow 5ms for initialization to complete
+            delete init_perf;
+            std::cout << "[DEBUG] SetUp: Initialization object created and destroyed successfully" << std::endl;
+        } catch (...) {
+            std::cout << "[DEBUG] SetUp: Exception during initialization" << std::endl;
+            throw;
+        }
+        // Additional stabilization time
         usleep(10000); // 10ms delay
     }
 
