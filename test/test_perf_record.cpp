@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "rdk_perf.h"
+#include "rdk_perf_process.h"
 
 // Note: PerfRecord is designed to be used internally by RDKPerf.
 // Creating standalone PerfRecords causes segfaults when their destructors run

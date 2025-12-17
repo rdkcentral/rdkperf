@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "rdk_perf.h"
+#include "rdk_perf_process.h"
 
 class RDKPerfTest : public ::testing::Test {
 protected:
