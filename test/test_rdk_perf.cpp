@@ -24,11 +24,13 @@
 class RDKPerfTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Setup code if needed
+        // Initialize the process map before creating RDKPerf objects
+        RDKPerf_InitializeMap();
     }
 
     void TearDown() override {
-        // Cleanup code if needed
+        // Clean up the process map after tests
+        RDKPerf_DeleteMap();
     }
 };
 
