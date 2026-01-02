@@ -26,6 +26,12 @@ all:
 	@for i in $(SUBDIRS); do \
 	echo "make all in $$i..."; \
 	(cd $$i; $(MAKE) $(MFLAGS)); done
+
+# Note: For embedded systems, use 'make all' to build tests, then deploy manually.
+# The 'test' target runs tests on the build system (requires gtest and runtime environment).
+test: all
+	@echo "Running RDKPerf test suite..."
+	@export LD_LIBRARY_PATH=$(BUILD_DIR):$$LD_LIBRARY_PATH && $(BUILD_DIR)/rdkperf_tests
  
 clean:
 	@for i in $(SUBDIRS); do \
