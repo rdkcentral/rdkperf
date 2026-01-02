@@ -25,13 +25,13 @@
 class RDKPerfTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Initialize the process map before creating RDKPerf objects
-        RDKPerf_InitializeMap();
+        // Process map is initialized by PerfModuleInit (global constructor)
+        // Nothing to do here
     }
 
     void TearDown() override {
-        // Clean up the process map after tests
-        RDKPerf_DeleteMap();
+        // Don't delete the global map - it's shared across all tests
+        // and will be cleaned up by PerfModuleTerminate at program exit
     }
 };
 

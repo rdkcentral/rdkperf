@@ -150,9 +150,12 @@ TEST_F(PerfTreeTest, ReportData) {
 
 TEST_F(PerfTreeTest, CloseActiveNode) {
     PerfTree tree;
-    PerfRecord record("test_function");
+    pthread_t tid = pthread_self();
+    char threadName[] = "test_thread";
+    uint64_t startTime = PerfRecord::TimeStamp();
     
-    PerfNode* node = tree.AddNode(&record);
+    char name[] = "test_function";
+    PerfNode* node = tree.AddNode(name, tid, threadName, startTime);
     
     // Close the active node
     tree.CloseActiveNode(node);

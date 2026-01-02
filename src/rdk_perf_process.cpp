@@ -214,9 +214,11 @@ PerfProcess* RDKPerf_FindProcess(pid_t pID)
 
     SCOPED_LOCK();
 
-    auto it = sp_ProcessMap->find(pID);
-    if(it != sp_ProcessMap->end()) {
-        retVal = it->second;
+    if(sp_ProcessMap != NULL) {
+        auto it = sp_ProcessMap->find(pID);
+        if(it != sp_ProcessMap->end()) {
+            retVal = it->second;
+        }
     }
 
     return retVal;
@@ -225,23 +227,30 @@ void RDKPerf_InsertProcess(pid_t pID, PerfProcess* pProcess)
 {
     SCOPED_LOCK();
 
-    sp_ProcessMap->insert(std::pair<pid_t, PerfProcess*>(pID, pProcess));
-    LOG(eError, "Process Map %p size %d added entry for PID %X, pProcess %p\n", sp_ProcessMap, sp_ProcessMap->size(), pID, pProcess);
+    if(sp_ProcessMap != NULL) {
+        sp_ProcessMap->insert(std::pair<pid_t, PerfProcess*>(pID, pProcess));
+        LOG(eError, "Process Map %p size %d added entry for PID %X, pProcess %p\n", sp_ProcessMap, sp_ProcessMap->size(), pID, pProcess);
+    }
+    else {
+        LOG(eError, "Cannot insert process - map is NULL\n");
+    }
 }
 
 void RDKPerf_RemoveProcess(pid_t pID)
 {
     SCOPED_LOCK();
 
-    // Find thread in process map
-    auto it = sp_ProcessMap->find(pID);
-    if(it == sp_ProcessMap->end()) {
-        LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)pID);
-    }
-    else {
-        LOG(eError, "Process Map size %d found entry for PID %X\n", sp_ProcessMap->size(), it->first);
-        delete it->second;
-        sp_ProcessMap->erase(it);
+    if(sp_ProcessMap != NULL) {
+        // Find thread in process map
+        auto it = sp_ProcessMap->find(pID);
+        if(it == sp_ProcessMap->end()) {
+            LOG(eError, "Could not find Process ID %X for reporting\n", (uint32_t)pID);
+        }
+        else {
+            LOG(eError, "Process Map size %d found entry for PID %X\n", sp_ProcessMap->size(), it->first);
+            delete it->second;
+            sp_ProcessMap->erase(it);
+        }
     }
 }
 

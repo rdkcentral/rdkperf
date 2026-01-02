@@ -205,27 +205,20 @@ TEST_F(InstrumentationOverheadTest, DISABLED_ThresholdOverhead) {
 TEST_F(InstrumentationOverheadTest, DISABLED_MemoryOverhead) {
     const int count = 1000;
     
-    // Estimate memory usage by creating many instances
-    RDKPerf* perfs[count];
-    
     std::cout << "\n=== Memory Overhead Estimate ===" << std::endl;
     std::cout << "NOTE: This measures sizeof() for the RDKPerf object wrapper." << std::endl;
     std::cout << "Actual runtime memory includes heap allocations for tree structures." << std::endl;
-    std::cout << "Creating " << count << " RDKPerf instances..." << std::endl;
-    
-    for (int i = 0; i < count; i++) {
-        perfs[i] = new RDKPerf("memory_test");
-    }
-    
-    std::cout << "RDKPerf instances created successfully" << std::endl;
     std::cout << "Object size per instance (sizeof): " << sizeof(RDKPerf) << " bytes" << std::endl;
     std::cout << "Total object size for " << count << " instances: " << sizeof(RDKPerf) * count << " bytes" << std::endl;
     std::cout << "Additional heap memory for trees/nodes is allocated dynamically." << std::endl;
     
-    // Clean up
+    // Test scoped creation/destruction pattern (correct RAII usage)
+    std::cout << "\nTesting " << count << " sequential scoped instances..." << std::endl;
     for (int i = 0; i < count; i++) {
-        delete perfs[i];
+        RDKPerf perf("memory_test");
+        // Object created and destroyed in proper LIFO order
     }
+    std::cout << "Sequential instances tested successfully" << std::endl;
     
     SUCCEED();
 }

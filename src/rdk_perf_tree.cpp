@@ -117,6 +117,11 @@ bool PerfTree::IsInactive()
 void PerfTree::CloseActiveNode(PerfNode* pTreeNode)
 {
     //Get last opended node
+    if(m_activeNode.empty()) {
+        LOG(eError, "Attempting to close node on empty stack\n");
+        return;
+    }
+    
     PerfNode* pTop = m_activeNode.top();
     if(pTop != NULL) {
         // There is an active node
