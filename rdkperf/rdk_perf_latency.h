@@ -19,12 +19,21 @@
 #ifndef __RDK_PERF_LATENCY_H__
 #define __RDK_PERF_LATENCY_H__
 
-#include "rdk_perf_sequence.h"
-#include "rdk_perf_location.h"
+#include <stdint.h>
+// Forward declaration
+#ifndef bool
+#define bool  uint8_t
+#endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void RDKLatency(const char* sequence, const char* location);
-bool RDKCheckSequenceCount(PerfSequence* pSeq);
 bool RDKLatencyReport(const char* sequence);
+bool RDKLatencyReportAll();
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 #endif // __RDK_PERF_LATENCY_H__

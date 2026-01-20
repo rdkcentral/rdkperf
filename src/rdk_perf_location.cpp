@@ -395,7 +395,7 @@ bool PerfLocation::AddTimeStamp(uint64_t timeStamp)
                 _location->max = diff;
             }
 
-            LOG(eTrace, "Count %d Total %lu, Avg %lf Min %lu, Max %lu elapsed %lf\n", 
+            LOG(eTrace, "[%s] Count %d Total %lu, Avg %lf Min %lu, Max %lu elapsed %lf\n", _location->name,
                         _location->count,  _location->total, (double)(_location->total / (_location->count + 1)), 
                         _location->min, _location->max, (double)(_location->total_elapsed / (_location->count + 1)));
 

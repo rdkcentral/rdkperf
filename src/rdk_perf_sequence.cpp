@@ -63,6 +63,7 @@ PerfSequence::PerfSequence()
 , _sequences(nullptr)
 , _locations(nullptr)
 , _current_sequence(nullptr)
+, _current_location(nullptr)
 {
     // Caclulate the size of the memory block
     _memory_block_size = PerfLocation::GetLocationDataSize() * PerfLocation::GetMaxLocations();
@@ -92,6 +93,21 @@ PerfSequence::~PerfSequence()
         delete _shared_memory_block;
     }
     return;
+}
+
+std::vector<std::string> PerfSequence::GetAllSequenceNames()
+{
+    PERF_FUNC(__FUNCTION__);
+
+    std::vector<std::string> sequenceNames;
+
+    for(uint32_t i = 0; i < MAX_SEQUENCE; i++) {
+        if(_sequences[i].name[0] != '\0') {
+            sequenceNames.push_back(std::string(_sequences[i].name));
+        }
+    }
+
+    return sequenceNames;
 }
 
 bool PerfSequence::GetSequence(const char* sequenceName)
@@ -131,6 +147,7 @@ bool PerfSequence::GetSequence(const char* sequenceName)
                 _sequences[i].location_offset = INVALID_OFFSET;
                 // Initialize the timestamp circular buffer
                 CircularBuffer rootTimeStamps(&_sequences[i].timeStampCirBuffer[0], MAX_TIME_STAMPS);
+                rootTimeStamps.set_name(_sequences[i].name);
                 _current_sequence = &_sequences[i];
                 retVal = true;
                 break;
@@ -282,6 +299,8 @@ bool PerfSequence::AddLocation(const char* locationName)
             _locations[i].min = 0;
             _locations[i].max = 0;
 
+            CircularBuffer circBuffer(&_locations[i].timeStampCirBuffer[0], MAX_TIME_STAMPS);
+            circBuffer.set_name(_locations[i].name);
             // If this is the first location in the sequence set the starting location offset
             if(_current_sequence->location_offset == INVALID_OFFSET) {
                 _current_sequence->location_offset = i;
@@ -377,6 +396,7 @@ uint32_t PerfSequence::GetLocationsDepth()
 
     return count;
 }
+
 DataRecord* PerfSequence::GetDataRecord()
 {
     PERF_FUNC(__FUNCTION__);

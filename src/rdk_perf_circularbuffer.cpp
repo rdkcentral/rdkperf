@@ -30,12 +30,14 @@ CircularBuffer::CircularBuffer()
 CircularBuffer::CircularBuffer(void* preallocatedMemory, size_t maxRecords)
 
 {
-    circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
-    circBuffer->maxRecords = maxRecords;
-    circBuffer->head = 0;
-    circBuffer->tail = 0;
-    circBuffer->currentSize = 0;
-    std::memset(circBuffer->records, 0, circBuffer->maxRecords * sizeof(CircBufferRecord));}
+    // circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
+    // circBuffer->maxRecords = maxRecords;
+    // circBuffer->head = 0;
+    // circBuffer->tail = 0;
+    // circBuffer->currentSize = 0;
+    // std::memset(circBuffer->records, 0, circBuffer->maxRecords * sizeof(CircBufferRecord));
+    initialize_with_exiting_memory(preallocatedMemory, maxRecords);
+}
 
 CircularBuffer::~CircularBuffer() {
     // No need to explicitly destruct records 
@@ -55,12 +57,13 @@ void CircularBuffer::initialize(void* preallocatedMemory, size_t maxRecords)
 void CircularBuffer::initialize_with_exiting_memory(void* preallocatedMemory, size_t maxRecords) 
 {
     circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
+    circBuffer->maxRecords = maxRecords;
 }
 
 bool CircularBuffer::push(uint32_t key, uint64_t value) 
 {
     if(circBuffer->records == nullptr) {
-        LOG(eError, "Records array not set\n");
+        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
         return false;
     }
 
@@ -79,7 +82,7 @@ bool CircularBuffer::push(uint32_t key, uint64_t value)
 bool CircularBuffer::pop(uint32_t& key, uint64_t& value) 
 {
     if(circBuffer->records == nullptr) {
-        LOG(eError, "Records array not set\n");
+        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
         return false;
     }
 
@@ -90,18 +93,20 @@ bool CircularBuffer::pop(uint32_t& key, uint64_t& value)
     value = circBuffer->records[circBuffer->tail].value;
     circBuffer->tail = (circBuffer->tail + 1) % circBuffer->maxRecords;
     --circBuffer->currentSize;
+
+    LOG(eTrace, "[%s] Popped key %u value %lu\n", circBuffer->name, key, value);
     return true;
 }
 
 bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const 
 {
     if(circBuffer->records == nullptr) {
-        LOG(eError, "Records array not set\n");
+        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
         return false;
     }
     
     if (empty()) {
-        LOG(eWarning, "Buffer is empty\n");
+        LOG(eWarning, "[%s] Buffer is empty\n", circBuffer->name);
         return false; // Buffer is empty
     }
 
@@ -113,7 +118,7 @@ bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const
 bool CircularBuffer::find(uint32_t key, uint64_t& value) const 
 {
     if(circBuffer->records == nullptr) {
-        LOG(eError, "Records array not set\n");
+        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
         return false;
     }
 

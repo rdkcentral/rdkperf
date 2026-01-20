@@ -23,6 +23,9 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include <vector>
+#include <string>
+
 #include "rdk_perf_shm_block.h"
 #include "rdk_perf_latency_data.h"
 
@@ -32,6 +35,8 @@
 // Forward declarations
 class PerfLocation;
 
+// PerfSequence class defined
+#define PERFSEQUENCE 1
 class PerfSequence
 {
 public:
@@ -47,6 +52,7 @@ public:
     DataRecord*     GetDataRecord();
     uint32_t        GetRecordCount();
 
+    std::vector<std::string> GetAllSequenceNames();
     static PerfSequence* GetInstance();
 
 private:

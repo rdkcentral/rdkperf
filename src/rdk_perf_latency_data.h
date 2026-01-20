@@ -43,6 +43,7 @@ typedef struct CircBufferObject_s
     uint32_t            head;
     uint32_t            tail;
     uint32_t            currentSize;
+    char*               name;   // pointer to the name of the location or sequence, stored in parent structure
 } CircBufferObject;
 
 

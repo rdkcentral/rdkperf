@@ -35,6 +35,11 @@ public:
 
     void initialize(void* preallocatedMemory, size_t maxRecords);
     void initialize_with_exiting_memory(void* preallocatedMemory, size_t maxRecords);
+    void set_name(const char* name) {
+        if(circBuffer != nullptr) {
+            circBuffer->name = const_cast<char*>(name);
+        }
+    }
 
     bool push(uint32_t key, uint64_t value);
     bool pop(uint32_t& key, uint64_t& value);
