@@ -135,7 +135,7 @@ void perf_node_time_no_cpu()
 
 void perf_node_time_with_cpu()
 {
-    RDKPerf(__FUNCTION__);
+    RDKPerf perf(__FUNCTION__);
     return;
 }
 
