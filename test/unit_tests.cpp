@@ -105,7 +105,7 @@ void record_with_threshold(uint32_t timeMS)
 {
     int idx = 0;
     while(idx < 1) {
-        RDKPerf perf (__FUNCTION__, timeMS/2 * 1000);
+        RDKPerf perf (__FUNCTION__, (static_cast<uint64_t>(timeMS) * 1000) / 2);
 
         do_work(timeMS);
 
