@@ -62,18 +62,23 @@ void CircularBuffer::initialize_with_exiting_memory(void* preallocatedMemory, si
 
 bool CircularBuffer::push(uint32_t key, uint64_t value) 
 {
-    if(circBuffer->records == nullptr) {
-        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
-        return false;
-    }
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
 
     if (full()) {
         // Remove the oldest record
+        LOG(eWarning, "[%s] Buffer FULL (size=%u, max=%u) - removing oldest key %u at tail=%u\n", 
+            circBuffer->name, circBuffer->currentSize, circBuffer->maxRecords, 
+            circBuffer->records[circBuffer->tail].key, circBuffer->tail);
         circBuffer->tail = (circBuffer->tail + 1) % circBuffer->maxRecords;
         --circBuffer->currentSize;
     }
     circBuffer->records[circBuffer->head].key = key;
     circBuffer->records[circBuffer->head].value = value;
+    LOG(eTrace, "[%s] PUSH key %u at head=%u, buffer size now %u/%u\n", 
+        circBuffer->name, key, circBuffer->head, circBuffer->currentSize + 1, circBuffer->maxRecords);
     circBuffer->head = (circBuffer->head + 1) % circBuffer->maxRecords;
     ++circBuffer->currentSize;
     return true;
@@ -81,16 +86,19 @@ bool CircularBuffer::push(uint32_t key, uint64_t value)
 
 bool CircularBuffer::pop(uint32_t& key, uint64_t& value) 
 {
-    if(circBuffer->records == nullptr) {
-        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
-        return false;
-    }
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
 
     if (empty()) {
+        LOG(eWarning, "[%s] POP attempted on EMPTY buffer\n", circBuffer->name);
         return false; // Buffer is empty
     }
     key = circBuffer->records[circBuffer->tail].key;
     value = circBuffer->records[circBuffer->tail].value;
+    LOG(eTrace, "[%s] POP key %u from tail=%u, buffer size %u->%u\n", 
+        circBuffer->name, key, circBuffer->tail, circBuffer->currentSize, circBuffer->currentSize - 1);
     circBuffer->tail = (circBuffer->tail + 1) % circBuffer->maxRecords;
     --circBuffer->currentSize;
 
@@ -100,10 +108,10 @@ bool CircularBuffer::pop(uint32_t& key, uint64_t& value)
 
 bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const 
 {
-    if(circBuffer->records == nullptr) {
-        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
-        return false;
-    }
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
     
     if (empty()) {
         LOG(eWarning, "[%s] Buffer is empty\n", circBuffer->name);
@@ -117,22 +125,40 @@ bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const
 
 bool CircularBuffer::find(uint32_t key, uint64_t& value) const 
 {
-    if(circBuffer->records == nullptr) {
-        LOG(eError, "[%s] Records array not set\n", circBuffer->name);
-        return false;
-    }
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
 
     if (empty()) {
+        LOG(eWarning, "[%s] FIND key %u: Buffer is EMPTY\n", circBuffer->name, key);
         return false; // Buffer is empty
     }
+    
+    LOG(eTrace, "[%s] FIND key %u: searching in buffer (size=%u, head=%u, tail=%u)\n", 
+        circBuffer->name, key, circBuffer->currentSize, circBuffer->head, circBuffer->tail);
+    
     size_t index = circBuffer->tail;
     for (size_t i = 0; i < circBuffer->currentSize; ++i) {
+        LOG(eTrace, "[%s] FIND key %u: checking index %u, found key %u\n", 
+            circBuffer->name, key, index, circBuffer->records[index].key);
         if (circBuffer->records[index].key == key) {
             value = circBuffer->records[index].value;
+            LOG(eTrace, "[%s] FIND key %u: FOUND at index %u\n", circBuffer->name, key, index);
             return true;
         }
         index = (index + 1) % circBuffer->maxRecords;
     }
+    LOG(eWarning, "[%s] FIND key %u: Key NOT found in buffer (size=%u, contains keys: tail->head)\n", 
+        circBuffer->name, key, circBuffer->currentSize);
+    
+    // Log all keys currently in buffer
+    size_t idx = circBuffer->tail;
+    for (size_t i = 0; i < circBuffer->currentSize; ++i) {
+        LOG(eWarning, "[%s] Buffer[%u] = key %u\n", circBuffer->name, i, circBuffer->records[idx].key);
+        idx = (idx + 1) % circBuffer->maxRecords;
+    }
+    
     return false; // Key not found
 }
 

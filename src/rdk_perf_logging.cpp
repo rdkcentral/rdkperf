@@ -60,10 +60,14 @@ static void LogModuleInit()
 {
     LOG(eWarning, "RDK Perf Logging initialize extending logging set to %d\n", s_VerboseLog);
     const char *env_log_level = getenv("RDKPERF_EXTENDED_LOGGING");
+    fprintf(stdout, "[DEBUG] env_log_level=%s\n", env_log_level ? env_log_level : "NULL");
     if(env_log_level != NULL &&
        strncasecmp(env_log_level, "true", strlen("true")) == 0) {
+      fprintf(stdout, "[DEBUG] Setting s_VerboseLog to true\n");
       s_VerboseLog = true;
       LOG(eWarning, "Enabling RDKPERF extended logging %d", s_VerboseLog);
+    } else if(env_log_level != NULL) {
+      fprintf(stdout, "[DEBUG] env_log_level='%s' did not match 'true'\n", env_log_level);
     }
 }
 // This function is assigned to execute as library unload
