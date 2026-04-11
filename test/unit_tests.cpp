@@ -118,13 +118,13 @@ void record_with_threshold(uint32_t timeMS)
 int test_no_cpu()
 {
     static int nCount = 0;
-    RDKPerf(__FUNCTION__);
+    RDKPerf perf(__FUNCTION__);
     nCount++;
     return nCount;
 }
 void perf_node_time_no_cpu()
 {
-    RDKPerf(__FUNCTION__);
+    RDKPerf perf(__FUNCTION__);
 
     int nIdx = 0;
     while(nIdx < 100000) {
