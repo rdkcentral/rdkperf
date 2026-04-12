@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
     // Perform Unit tests
     unit_tests();
     //unit_tests_c();
-#endif // DO_UINT_TESTS
+#endif // DO_UNIT_TESTS
 
 #ifdef DO_THREAD_TESTS
     pthread_t threadId1;
