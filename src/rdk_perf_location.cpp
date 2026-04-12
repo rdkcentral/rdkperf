@@ -30,7 +30,7 @@
 #define PERF_FUNC(a)
 #endif // USE_RDK_PERF
 
-void* _locations = nullptr;
+static void* _locations = nullptr;
 
 #if USE_CIRCULAR_BUFFER
 // Circular Buffer (CoPilot Implementation)
