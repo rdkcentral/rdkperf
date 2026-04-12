@@ -91,7 +91,10 @@ PerfSequence::~PerfSequence()
 {
     // Clean up the shared memory block
     if(_shared_memory_block != nullptr) {
-        delete _shared_memory_block;
+        // `_shared_memory_block` is obtained via SharedMemoryBlock::get_instance(),  
+        // so PerfSequence does not own it and must not delete it here.  
+        // Treat the shared memory block as process-lifetime from this file.  
+        _shared_memory_block = nullptr;  
     }
     return;
 }
@@ -128,6 +131,7 @@ bool PerfSequence::GetSequence(const char* sequenceName)
     SetCurrentLocation(nullptr);
 
     // Find the sequence
+    _shared_memory_block->lock();
     for(uint32_t i = 0; i < MAX_SEQUENCE; i++) {
         if(strncmp(_sequences[i].name, sequenceName, MAX_NAME_LEN) == 0) {
             _current_sequence = &_sequences[i];
@@ -143,7 +147,9 @@ bool PerfSequence::GetSequence(const char* sequenceName)
         uint32_t i = 0;
         for(i = 0; i < MAX_SEQUENCE; i++) {
             if(_sequences[i].name[0] == '\0') {
-                strncpy(_sequences[i].name, sequenceName, MAX_NAME_LEN);
+                strncpy(_sequences[i].name, sequenceName, MAX_NAME_LEN - 1);  
+                _sequences[i].name[MAX_NAME_LEN - 1] = '\0';  // Force null termination
+
                 LOG(eTrace, "Added sequence %s\n", _sequences[i].name);
                 _sequences[i].location_offset = INVALID_OFFSET;
                 // Initialize the timestamp circular buffer
@@ -160,6 +166,9 @@ bool PerfSequence::GetSequence(const char* sequenceName)
             LOG(eError, "No more room for sequences, already allocated %d\n", i + 1);
         }
     }
+
+    // Unlock the shared memory block
+    _shared_memory_block->unlock();
 
     // Failed to find or add the sequence
     if(!retVal) {
@@ -182,12 +191,13 @@ bool PerfSequence::RemoveSequence(const char* sequenceName)
             _sequences[i].name[0] = '\0';
 
             // Remove all locations
-            Location* location = _locations + _sequences[i].location_offset;
-            while(location != nullptr) {
-                Location* next = _locations + location->child_offset;
-                LOG(eTrace, "Removing location %s", location->name);
-                location->name[0] = '\0';
-                location = next;
+            int32_t location_offset = _sequences[i].location_offset;  
+            while(location_offset != INVALID_OFFSET) {  
+                Location* location = _locations + location_offset;  
+                int32_t next_offset = location->child_offset;  
+                LOG(eTrace, "Removing location %s", location->name);  
+                location->name[0] = '\0';  
+                location_offset = next_offset;  
             }
 
             _sequences[i].location_offset = INVALID_OFFSET;
@@ -200,7 +210,9 @@ bool PerfSequence::RemoveSequence(const char* sequenceName)
     // Unlock the shared memory block
     _shared_memory_block->unlock();
 
-    LOG(eError, "Failed to find sequence %s ro remove\n", sequenceName);
+    if(!retVal) {
+        LOG(eError, "Failed to find sequence %s to remove\n", sequenceName);
+    }
     return retVal;
 }
 
@@ -289,7 +301,9 @@ bool PerfSequence::AddLocation(const char* locationName)
     uint32_t i = 0;
     for(i = 0; i < MAX_LOCATIONS; i++) {
         if(_locations[i].name[0] == '\0') {
-            strncpy(_locations[i].name, locationName, MAX_NAME_LEN);
+            strncpy(_locations[i].name, locationName, MAX_NAME_LEN - 1);  
+            _locations[i].name[MAX_NAME_LEN - 1] = '\0';  // Force null termination
+
             LOG(eWarning, "Adding location %s at index %ld\n", locationName, i);
             _locations[i].sequence = _current_sequence;
             _locations[i].count = 0;

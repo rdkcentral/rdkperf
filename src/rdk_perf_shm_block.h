@@ -33,7 +33,7 @@ struct GlobalStorage {
     uint16_t    attached_intances;
     sem_t       semaphore;
     // Data
-    void*       data;
+    uint8_t     data[0];
 };
 
 class SharedMemoryBlock {
@@ -44,7 +44,7 @@ public:
     bool        lock();
     bool        unlock();
 
-    void*       get_data()      { return &_shared_block->data; }
+    void*       get_data()      { return &_shared_block->data[0]; }
 
     // Static methods
     static SharedMemoryBlock* get_instance(uint64_t maxDataSize);

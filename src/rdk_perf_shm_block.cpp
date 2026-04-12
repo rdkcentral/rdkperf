@@ -66,12 +66,12 @@ bool SharedMemoryBlock::initialize()
     else {
         // We are the first to create the shared memory segment and can now initialize the memory
         bInitialize_memory = true;
-    }
 
-    // Set the size of the shared memory segment
-    if (ftruncate(_shm_fd, _data_size) == -1) {
-        ERR_LOG("ftruncate");
-        return false;
+        // Set the size of the shared memory segment
+        if (ftruncate(_shm_fd, _data_size) == -1) {
+            ERR_LOG("ftruncate");
+            return false;
+        }
     }
 
     // Map the shared memory segment into the process's address space
@@ -116,17 +116,24 @@ bool SharedMemoryBlock::initialize()
 
 SharedMemoryBlock::~SharedMemoryBlock() 
 {
+    bool bDelete = false;
+
     // Decrement the number of attached instances
     lock();
     _shared_block->attached_intances--;
+    if(_shared_block->attached_intances == 0) {
+        bDelete = true;
+    }
     unlock();
 
-    if(_shared_block->attached_intances == 0) {
+    if(bDelete) {
+        // Destroy the semaphore
+        sem_destroy(&_shared_block->semaphore);
         // Last process in the shared memory segment
         // Unlink the shared memory segment
         shm_unlink(SHARED_MEMORY_NAME);
-        // Destroy the semaphore
-        sem_destroy(&_shared_block->semaphore);
+
+        _shared_memory_block = nullptr;
     }
 
     // Unmap the shared memory segment
