@@ -153,7 +153,7 @@ void test_latency_2()
         do_work(1); 
         RDKLatency("test_sequence", "child_exit");
         LOG(eTrace, "Child process %d exiting\n", getpid());
-        kill(getpid(), SIGKILL);        // SIGQUIT takes 180ms, SIGKILL takes 0.5ms
+        _exit(0);
     }
     else {
         // Parent process
