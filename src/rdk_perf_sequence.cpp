@@ -73,6 +73,7 @@ PerfSequence::PerfSequence()
     _shared_memory_block = SharedMemoryBlock::get_instance(_memory_block_size);
     if(_shared_memory_block == nullptr) {
         LOG(eError, "Failed to attach to shared memory block\n");
+        return;
     }
 
     // Get the pointer to the sequence array
