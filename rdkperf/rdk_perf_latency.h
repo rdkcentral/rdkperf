@@ -20,9 +20,8 @@
 #define __RDK_PERF_LATENCY_H__
 
 #include <stdint.h>
-// Forward declaration
-#ifndef bool
-#define bool  uint8_t
+#ifndef __cplusplus
+#include <stdbool.h>
 #endif
 
 #ifdef __cplusplus
