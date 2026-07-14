@@ -45,7 +45,7 @@
 
 //#define RDK_PERF_MSG_QUEUE_NAME "/test"
 #define RDK_PERF_MSG_QUEUE_NAME "/RDKPerfServerQueue"
-#define MAX_NAME_LEN 128
+#define MAX_MSG_NAME_LEN 128
 
 typedef enum _MessageType 
 {
@@ -65,8 +65,8 @@ typedef struct _EntryMessage
 {
     pid_t               pID;
     pthread_t           tID;
-    char                szName[MAX_NAME_LEN];
-    char                szThreadName[MAX_NAME_LEN];
+    char                szName[MAX_MSG_NAME_LEN];
+    char                szThreadName[MAX_MSG_NAME_LEN];
     uint64_t            nTimeStamp;
     int32_t             nThresholdInUS;
 } EntryMessage;
@@ -75,7 +75,7 @@ typedef struct _ExitMessage
 {
     pid_t               pID;
     pthread_t           tID;
-    char                szName[MAX_NAME_LEN];
+    char                szName[MAX_MSG_NAME_LEN];
     uint64_t            nTimeStamp;
 } ExitMessage;
 
@@ -83,7 +83,7 @@ typedef struct _ThresholdMessage
 {
     pid_t               pID;
     pthread_t           tID;
-    char                szName[MAX_NAME_LEN];
+    char                szName[MAX_MSG_NAME_LEN];
     int32_t             nThresholdInUS;
 } ThresholdMessage;
 
@@ -147,7 +147,7 @@ private:
     mqd_t               m_queue;
     struct mq_attr      m_queue_attr;
     bool                m_bService;
-    char                m_szName[MAX_NAME_LEN];
+    char                m_szName[MAX_MSG_NAME_LEN];
     uint32_t            m_RefCount;
 };
 

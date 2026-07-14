@@ -93,7 +93,7 @@ void PerfClock::SetCPU()
     }
 
     if(data.ru_stime.tv_sec == 0 && data.ru_stime.tv_usec == 0) {
-        LOG(eError, "getrusage failed values = 0\n");   
+        //LOG(eError, "getrusage failed values = 0\n");   
         m_timeStamp.systemCPU = 0;
         m_timeStamp.userCPU = 0;       
     }

@@ -1,0 +1,183 @@
+/**
+* Copyright 2025 Comcast Cable Communications Management, LLC
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
+#include "rdk_perf_circularbuffer.h"
+#include "rdk_perf_logging.h"
+#include <cstring>
+#include <algorithm>
+#include "rdk_perf_latency_data.h"
+
+// Circular Buffer (CoPilot Implementation)
+CircularBuffer::CircularBuffer()
+: circBuffer(nullptr)
+{
+}
+
+CircularBuffer::CircularBuffer(void* preallocatedMemory, size_t maxRecords)
+
+{
+    // circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
+    // circBuffer->maxRecords = maxRecords;
+    // circBuffer->head = 0;
+    // circBuffer->tail = 0;
+    // circBuffer->currentSize = 0;
+    // std::memset(circBuffer->records, 0, circBuffer->maxRecords * sizeof(CircBufferRecord));
+    initialize_with_exiting_memory(preallocatedMemory, maxRecords);
+}
+
+CircularBuffer::~CircularBuffer() {
+    // No need to explicitly destruct records 
+    // as they are part of the location array
+}
+
+void CircularBuffer::initialize(void* preallocatedMemory, size_t maxRecords) 
+{
+    circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
+    circBuffer->maxRecords = maxRecords;
+    circBuffer->head = 0;
+    circBuffer->tail = 0;
+    circBuffer->currentSize = 0;
+    std::memset(circBuffer->records, 0, circBuffer->maxRecords * sizeof(CircBufferRecord));
+}
+
+void CircularBuffer::initialize_with_exiting_memory(void* preallocatedMemory, size_t maxRecords) 
+{
+    circBuffer = static_cast<CircBufferObject*>(preallocatedMemory);
+    circBuffer->maxRecords = maxRecords;
+}
+
+bool CircularBuffer::push(uint32_t key, uint64_t value) 
+{
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
+
+    if (full()) {
+        // Remove the oldest record
+        LOG(eWarning, "[%s] Buffer FULL (size=%u, max=%u) - removing oldest key %u at tail=%u\n", 
+            circBuffer->name, circBuffer->currentSize, circBuffer->maxRecords, 
+            circBuffer->records[circBuffer->tail].key, circBuffer->tail);
+        circBuffer->tail = (circBuffer->tail + 1) % circBuffer->maxRecords;
+        --circBuffer->currentSize;
+    }
+    circBuffer->records[circBuffer->head].key = key;
+    circBuffer->records[circBuffer->head].value = value;
+    LOG(eTrace, "[%s] PUSH key %u at head=%u, buffer size now %u/%u\n", 
+        circBuffer->name, key, circBuffer->head, circBuffer->currentSize + 1, circBuffer->maxRecords);
+    circBuffer->head = (circBuffer->head + 1) % circBuffer->maxRecords;
+    ++circBuffer->currentSize;
+    return true;
+}
+
+bool CircularBuffer::pop(uint32_t& key, uint64_t& value) 
+{
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
+
+    if (empty()) {
+        LOG(eWarning, "[%s] POP attempted on EMPTY buffer\n", circBuffer->name);
+        return false; // Buffer is empty
+    }
+    key = circBuffer->records[circBuffer->tail].key;
+    value = circBuffer->records[circBuffer->tail].value;
+    LOG(eTrace, "[%s] POP key %u from tail=%u, buffer size %u->%u\n", 
+        circBuffer->name, key, circBuffer->tail, circBuffer->currentSize, circBuffer->currentSize - 1);
+    circBuffer->tail = (circBuffer->tail + 1) % circBuffer->maxRecords;
+    --circBuffer->currentSize;
+
+    LOG(eTrace, "[%s] Popped key %u value %lu\n", circBuffer->name, key, value);
+    return true;
+}
+
+bool CircularBuffer::peek(uint32_t& key, uint64_t& value) const 
+{
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
+    
+    if (empty()) {
+        LOG(eWarning, "[%s] Buffer is empty\n", circBuffer->name);
+        return false; // Buffer is empty
+    }
+
+    key = circBuffer->records[circBuffer->tail].key;
+    value = circBuffer->records[circBuffer->tail].value;
+    return true;
+}
+
+bool CircularBuffer::find(uint32_t key, uint64_t& value) const 
+{
+    // if(circBuffer->records == nullptr) {
+    //     LOG(eError, "[%s] Records array not set\n", circBuffer->name);
+    //     return false;
+    // }
+
+    if (empty()) {
+        LOG(eWarning, "[%s] FIND key %u: Buffer is EMPTY\n", circBuffer->name, key);
+        return false; // Buffer is empty
+    }
+    
+    LOG(eTrace, "[%s] FIND key %u: searching in buffer (size=%u, head=%u, tail=%u)\n", 
+        circBuffer->name, key, circBuffer->currentSize, circBuffer->head, circBuffer->tail);
+    
+    size_t index = circBuffer->tail;
+    for (size_t i = 0; i < circBuffer->currentSize; ++i) {
+        LOG(eTrace, "[%s] FIND key %u: checking index %u, found key %u\n", 
+            circBuffer->name, key, index, circBuffer->records[index].key);
+        if (circBuffer->records[index].key == key) {
+            value = circBuffer->records[index].value;
+            LOG(eTrace, "[%s] FIND key %u: FOUND at index %u\n", circBuffer->name, key, index);
+            return true;
+        }
+        index = (index + 1) % circBuffer->maxRecords;
+    }
+    LOG(eWarning, "[%s] FIND key %u: Key NOT found in buffer (size=%u, contains keys: tail->head)\n", 
+        circBuffer->name, key, circBuffer->currentSize);
+    
+    // Log all keys currently in buffer
+    size_t idx = circBuffer->tail;
+    for (size_t i = 0; i < circBuffer->currentSize; ++i) {
+        LOG(eWarning, "[%s] Buffer[%u] = key %u\n", circBuffer->name, i, circBuffer->records[idx].key);
+        idx = (idx + 1) % circBuffer->maxRecords;
+    }
+    
+    return false; // Key not found
+}
+
+size_t CircularBuffer::size() const 
+{
+    return circBuffer->currentSize;
+}
+
+bool CircularBuffer::empty() const 
+{
+    return circBuffer->currentSize == 0;
+}
+
+bool CircularBuffer::full() const 
+{
+    return circBuffer->currentSize == circBuffer->maxRecords;
+}
+
+size_t CircularBuffer::recordSize() 
+{
+    return sizeof(CircBufferRecord);
+}

@@ -42,7 +42,7 @@ PerfMsgQueue::PerfMsgQueue(const char* szQueueName, bool bService)
     mode_t          mode = S_IRWXU | S_IRWXG | S_IRWXO;
     struct mq_attr  new_attr = { 0 };
 
-    snprintf(m_szName, MAX_NAME_LEN, "%s", szQueueName);
+    snprintf(m_szName, MAX_MSG_NAME_LEN, "%s", szQueueName);
 
     if(m_bService) {
         flags = O_RDONLY | O_CREAT;
@@ -106,20 +106,20 @@ bool PerfMsgQueue::SendMessage(MessageType type, const char* szName, uint64_t nT
         msg.msg_data.entry.tID = pthread_self();
         msg.msg_data.entry.nTimeStamp = nTimeStamp;
         msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
-        pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_NAME_LEN);
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        pthread_getname_np(msg.msg_data.entry.tID, msg.msg_data.entry.szThreadName, MAX_MSG_NAME_LEN);
+        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_MSG_NAME_LEN - 1), strlen(szName)));
         break;
     case eThreshold:
-        msg.msg_data.entry.pID = getpid();
-        msg.msg_data.entry.tID = pthread_self();
-        msg.msg_data.entry.nThresholdInUS = nThresholdInUS;
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        msg.msg_data.threshold.pID = getpid();
+        msg.msg_data.threshold.tID = pthread_self();
+        msg.msg_data.threshold.nThresholdInUS = nThresholdInUS;
+        memcpy((void*)msg.msg_data.threshold.szName, (void*)szName, MIN((size_t)(MAX_MSG_NAME_LEN - 1), strlen(szName)));
         break;
     case eExit:
         msg.msg_data.exit.pID = getpid();
         msg.msg_data.exit.tID = pthread_self();
         msg.msg_data.exit.nTimeStamp = nTimeStamp;
-        memcpy((void*)msg.msg_data.entry.szName, (void*)szName, MIN((size_t)(MAX_NAME_LEN - 1), strlen(szName)));
+        memcpy((void*)msg.msg_data.exit.szName, (void*)szName, MIN((size_t)(MAX_MSG_NAME_LEN - 1), strlen(szName)));
         break;
     case eReportThread:
         msg.msg_data.report_thread.pID = getpid();

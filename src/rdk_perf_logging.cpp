@@ -59,11 +59,14 @@ static void __attribute__((destructor)) LogModuleTerminate();
 static void LogModuleInit()
 {
     LOG(eWarning, "RDK Perf Logging initialize extending logging set to %d\n", s_VerboseLog);
-    const char *env_log_level = getenv("RDKPER_EXTENDED_LOGGING");
+    const char *env_log_level = getenv("RDKPERF_EXTENDED_LOGGING");
+    LOG(eWarning, "[WARN] env_log_level=%s\n", env_log_level ? env_log_level : "NULL");
     if(env_log_level != NULL &&
-       strncasecmp(env_log_level, "true", strlen("true")) == 0) {
-      s_VerboseLog = true;
-      LOG(eWarning, "Enabling RDKPERF extended logging %d", s_VerboseLog);
+        strncasecmp(env_log_level, "true", strlen("true")) == 0) {
+        s_VerboseLog = true;
+        LOG(eWarning, "Enabling RDKPERF extended logging %d", s_VerboseLog);
+    } else if(env_log_level != NULL) {
+        LOG(eWarning, "[WARN] env_log_level='%s' did not match 'true'\n", env_log_level);
     }
 }
 // This function is assigned to execute as library unload
