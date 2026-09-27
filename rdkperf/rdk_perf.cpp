@@ -39,8 +39,6 @@
 
 #include <unistd.h>
 
-#define REPORTING_INITIAL_COUNT 5000
-#define REPORTING_INTERVAL_COUNT 20000
 #define TIMER_INTERVAL_SECONDS 10
 #define MAX_DELAY 600
 
@@ -54,17 +52,10 @@ static void __attribute__((destructor)) PerfModuleTerminate();
 
 class TimerCallback {
 public:
-    enum SignalResult {
-        WAITING     = 0,
-        TIMEOUT     = 1,
-        EXIT_LOOP   = 2
-    };
-
-    TimerCallback (void* pContext) 
-    : m_Context(pContext)
-    , m_nDelay(0)
+    TimerCallback()
+    : m_nDelay(0)
     , m_nCount(0)
-    , m_current_state(WAITING)
+    , m_stopRequested(false)
     {
         LOG(eWarning, "Timer Created\n");
     };
@@ -73,49 +64,25 @@ public:
         LOG(eWarning, "Timer destroyed\n");
     }; 
 
-    void Signal (TimerCallback::SignalResult value)
+    bool Wait(unsigned int time_in_seconds)
     {
         std::unique_lock<std::mutex> lck(m_mtx);
-        m_current_state = value;
-        m_cv.notify_one();
-        lck.unlock();
-    }
-
-    SignalResult Wait(unsigned int time_in_seconds)
-    {
-        TimerCallback::SignalResult result;
-        std::chrono::milliseconds ms(time_in_seconds * 1000);
-
-        std::unique_lock<std::mutex> lck(m_mtx);
-
-        if(m_current_state == WAITING) {
-            if(m_cv.wait_for(lck, ms) == std::cv_status::timeout) {
-                result = TIMEOUT;
-            }
-            else {
-                result = m_current_state;
-            }
-        }
-        else {
-            // State change before the lock was called
-            result = m_current_state;
-        }
-        m_current_state = WAITING;
-
-        lck.unlock();
-
-        return result;
+        return m_cv.wait_for(lck, std::chrono::seconds(time_in_seconds), [this] {
+            return m_stopRequested;
+        });
     }
 
     void StopTask() {
-        LOG(eWarning, "Stoping Timer Task\n");
-        Signal(EXIT_LOOP);
+        LOG(eWarning, "Stopping Timer Task\n");
+        {
+            std::lock_guard<std::mutex> lck(m_mtx);
+            m_stopRequested = true;
+        }
+        m_cv.notify_one();
         return;
     };
 
-    bool Loop() {
-        bool bTimerContinue = true;
- 
+    void Loop() {
         LOG(eTrace, "Timer Callback! m_nCount = %d m_nDelay = %d\n", m_nCount, m_nDelay);
 
         // Validate that threads in process are still active
@@ -134,20 +101,14 @@ public:
         else {
             LOG(eTrace, "Could not find Process ID %X from map of size %d for reporting\n", (uint32_t)getpid(), RDKPerf_GetMapSize());
         }
-
-        return bTimerContinue;
     }
 
     void Task() {
         LOG(eWarning, "Task Started\n");
-        while(true) {
-            if(!Loop()) {
-                LOG(eWarning, "Timer loop signaled for Exit..\n");
-                break;
-            }
+        while(!Wait(0)) {
+            Loop();
             LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
-            SignalResult result = Wait(TIMER_INTERVAL_SECONDS);
-            if(result == EXIT_LOOP) {
+            if(Wait(TIMER_INTERVAL_SECONDS)) {
                 LOG(eWarning, "Exit task loop has been signaled\n");
                 break;
             }
@@ -156,11 +117,9 @@ public:
         return;
     };
 private:
-    void*       m_Context;
     uint32_t    m_nDelay;
     uint32_t    m_nCount;
-    // Timeout, signaling
-    TimerCallback::SignalResult m_current_state;
+    bool         m_stopRequested;
     std::mutex   m_mtx;
     std::condition_variable m_cv;
 };
@@ -189,7 +148,7 @@ static void PerfModuleInit()
     LOG(eWarning, "RDK performance process initialize %X named %s\n", getpid(), strProcessName);       
     
     RDKPerf_InitializeMap();
-    s_timer = new TimerCallback(NULL);
+    s_timer = new TimerCallback();
 
     if(s_thread == NULL) {
         s_thread = new std::thread(&TimerCallback::Task, s_timer);
@@ -218,23 +177,22 @@ static void PerfModuleTerminate()
     RDKPerf_ReportProcess(pID);
 #endif    
 
-    // Remove prosess from list
-    RDKPerf_RemoveProcess(pID);
-
     // Wait for timer thread cleanup
     if(s_thread != NULL && s_thread->joinable()) {
         LOG(eWarning, "Cleaning up timer thread\n");
         s_thread->join();
-
-        delete s_thread;
-        if(s_timer != NULL) delete s_timer;
-
-        s_thread = NULL;
-        s_timer = NULL;
     }
     else {
         LOG(eError, "Thread does not exist\n"); 
     }
+
+    delete s_thread;
+    delete s_timer;
+    s_thread = NULL;
+    s_timer = NULL;
+
+    // Remove process from list after the timer can no longer access it
+    RDKPerf_RemoveProcess(pID);
 
 #ifdef PERF_REMOTE
     if(s_pQueue != NULL) {
