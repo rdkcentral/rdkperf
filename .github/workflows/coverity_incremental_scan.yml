@@ -19,7 +19,7 @@ jobs:
       pullRequestNumber: ${{ github.event.inputs.pullRequestNumber || github.event.pull_request.number }}
       branchName: ${{ github.event.pull_request.base.ref }}
       # Specify your actual build command here
-      buildCommand: sh build.sh
+      buildCommand: make all
       # Specify any packages required for building your components. 
       # Enable the customSetup and add the package names below.
       #customSetup: |
