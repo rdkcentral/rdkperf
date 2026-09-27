@@ -123,7 +123,7 @@ void RDKMemTracker::Report(bool bForce)
 {
     if(bForce == true || _map.size() > 0) {
         // How many allocations in the map
-        Log("Total active allocations %u (%u)\n", _totalAllocatedElements, _map.size());
+        Log("Total active allocations %u (%zu)\n", _totalAllocatedElements, _map.size());
 
         auto it = _map.begin();
         while(it != _map.end()) {
