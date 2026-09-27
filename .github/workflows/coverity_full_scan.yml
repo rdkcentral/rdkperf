@@ -11,7 +11,7 @@ jobs:
     with:
       branchName: ${{ github.ref_name }}
       # Specify your actual build command here
-      buildCommand: sh build.sh
+      buildCommand: make all
       # Specify any packages required for building your components. 
       # Enable the customSetup and add the package names below.
       #customSetup: |
