@@ -1,0 +1,31 @@
+name: Coverity Incremental Analysis Scan
+
+on:
+  pull_request:
+    branches: [ develop ]
+    paths: ['**/*.c', '**/*.cpp', '**/*.cc', '**/*.cxx', '**/*.h', '**/*.hpp']
+
+  workflow_dispatch:
+    inputs:
+      pullRequestNumber:
+        description: 'Coverity Run: Pull Request Number'
+        required: true
+        type: string
+        
+jobs:
+  call_coverity_incremental_scan:
+    uses: rdk-e/build_tools_workflows/.github/workflows/coverity_component_incremental_scan.yml@develop
+    with:
+      pullRequestNumber: ${{ github.event.inputs.pullRequestNumber || github.event.pull_request.number }}
+      branchName: ${{ github.event.pull_request.base.ref }}
+      # Specify your actual build command here
+      buildCommand: sh build.sh
+      # Specify any packages required for building your components. 
+      # Enable the customSetup and add the package names below.
+      #customSetup: |
+      #  apt-get update -y
+      #  apt-get install -y vim
+    secrets: 
+      RDKE_ARTIFACTORY_USER_APIKEY: ${{ secrets.RDKE_ARTIFACTORY_USER_APIKEY }}
+      RDKE_COVERITY_APIKEY: ${{ secrets.RDKE_COVERITY_APIKEY }}
+      RDKE_GITHUB_TOKEN: ${{ secrets.RDKE_GITHUB_TOKEN }}
