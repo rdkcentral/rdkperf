@@ -62,7 +62,6 @@ public:
 
     TimerCallback (void* pContext) 
     : m_Context(pContext)
-    , m_bContinue(false)
     , m_nDelay(0)
     , m_nCount(0)
     , m_current_state(WAITING)
@@ -110,7 +109,6 @@ public:
 
     void StopTask() {
         LOG(eWarning, "Stoping Timer Task\n");
-        m_bContinue = false;
         Signal(EXIT_LOOP);
         return;
     };
@@ -141,18 +139,17 @@ public:
     }
 
     void Task() {
-        m_bContinue = true;
         LOG(eWarning, "Task Started\n");
-        while(m_bContinue == true) {
+        while(true) {
             if(!Loop()) {
                 LOG(eWarning, "Timer loop signaled for Exit..\n");
-                m_bContinue = false;
                 break;
             }
             LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
             SignalResult result = Wait(TIMER_INTERVAL_SECONDS);
             if(result == EXIT_LOOP) {
                 LOG(eWarning, "Exit task loop has been signaled\n");
+                break;
             }
         }
         LOG(eWarning, "Task Completed\n");
@@ -160,7 +157,6 @@ public:
     };
 private:
     void*       m_Context;
-    bool        m_bContinue; 
     uint32_t    m_nDelay;
     uint32_t    m_nCount;
     // Timeout, signaling
