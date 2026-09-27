@@ -28,8 +28,13 @@
 
 #include "rdk_perf.h"
 #include "rdk_perf_logging.h"
+#include <sys/wait.h>
 
-// Uint Tests prototype
+//#define DO_UNIT_TESTS
+//#define DO_THREAD_TESTS
+#define DO_LATENCY_TESTS
+
+// Unit Tests prototype
 void unit_tests();
 void unit_tests_c();
 
@@ -114,6 +119,73 @@ void test_inline()
     return;
 }
 
+// Declared in unit_tests.cpp
+void do_work(uint32_t timeoutMS);
+
+void test_latency_4()
+{
+    LOG(eTrace, "END\n");
+    RDKLatency("test_sequence", __FUNCTION__);
+}
+
+void test_latency_3()
+{
+    LOG(eTrace, "\n");
+    RDKLatency("test_sequence", __FUNCTION__);
+    do_work(1); 
+    test_latency_4();
+}
+
+void test_latency_2()
+{
+    LOG(eTrace, "\n");
+    // fork the process and wait for child to complete
+    RDKLatency("test_sequence", __FUNCTION__);
+
+#if 1
+    LOG(eTrace, "Forking child process\n");
+    pid_t child_pid = fork();
+    if(child_pid == 0) {
+        RDKLatency("test_sequence", "child_start");
+
+        LOG(eTrace, "Child process %d created\n", getpid());
+        /* This is done by the child process. */
+        do_work(1); 
+        RDKLatency("test_sequence", "child_exit");
+        LOG(eTrace, "Child process %d exiting\n", getpid());
+        _exit(0);
+    }
+    else {
+        // Parent process
+        int status;
+        LOG(eTrace, "Parent process %d waiting for child %d\n", getpid(), child_pid);
+        pid_t killed = waitpid(child_pid, &status, 0);
+        if(killed == -1) {
+            LOG(eError, "Failed to wait for child process\n");
+        }
+        LOG(eTrace, "Child process %d <-> %d completed\n", killed, child_pid);
+    }
+
+    test_latency_3();
+#endif
+}
+
+void test_latency_1()
+{
+    LOG(eTrace, "\n");
+    RDKLatency("test_sequence", __FUNCTION__);
+    do_work(1);  
+    test_latency_2();
+}
+
+void test_latency()
+{
+    LOG(eTrace, "\n");
+    RDKLatency("test_sequence", __FUNCTION__);
+    do_work(1); 
+    test_latency_1();
+}
+
 int main(int argc, char *argv[])
 {    
     LOG(eWarning, "Enter test app %s\n", __DATE__);
@@ -138,9 +210,11 @@ int main(int argc, char *argv[])
     // }
     // sleep(1);
 #endif
+#ifdef DO_UNIT_TESTS
     // Perform Unit tests
     unit_tests();
     //unit_tests_c();
+#endif // DO_UNIT_TESTS
 
 #ifdef DO_THREAD_TESTS
     pthread_t threadId1;
@@ -156,10 +230,21 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef DO_INLINE_TESTS
-    for(int idx = 0; idx < 1000; idx++) {
+    for(int idx = 0; idx < 10; idx++) {
         test_inline();
     }
 #endif
+
+#ifdef DO_LATENCY_TESTS
+    for(int idx = 0; idx < 499; idx++) {
+        // if(idx % 250 == 0) {
+        //     LOG(eWarning, "Running latency test %d\n", idx);
+        // }
+        test_latency();
+    }
+    RDKLatencyReport("test_sequence");
+#endif // DO_LATENCY_TESTS
+
     // Don't need to make this call as the process terminate handler will 
     // call the RDKPerf_ReportProcess() function
     // RDKPerf_ReportProcess(getpid());

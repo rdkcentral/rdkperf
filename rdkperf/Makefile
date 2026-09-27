@@ -30,6 +30,7 @@ INCLUDES += \
 
 # Libraries to load
 LD_FLAGS = -L$(BUILD_DIR) \
+	-Wl,-rpath,'$$ORIGIN' \
 	-lperftool \
 	-lrt -lpthread -lstdc++
 

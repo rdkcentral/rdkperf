@@ -43,7 +43,15 @@ void timer_sleep(uint32_t timeMS)
 
     return;
 }
-
+void do_work_subtask()
+{
+    RDKPerf perf (__FUNCTION__);
+    int i = 0;
+    while(i < 10000) {
+        i++;
+    }
+    return;
+}
 void do_work(uint32_t timeMS)
 {
     struct timeval timeStamp;
@@ -52,6 +60,7 @@ void do_work(uint32_t timeMS)
     uint64_t inital_time = (uint64_t)(((uint64_t)timeStamp.tv_sec * 1000000) + timeStamp.tv_usec);
     uint64_t elapsed_time = inital_time;
     while(elapsed_time - inital_time < (timeMS * 1000)) {
+        do_work_subtask();
         gettimeofday(&timeStamp, NULL);
         elapsed_time = (uint64_t)(((uint64_t)timeStamp.tv_sec * 1000000) + timeStamp.tv_usec);
     }
@@ -96,7 +105,7 @@ void record_with_threshold(uint32_t timeMS)
 {
     int idx = 0;
     while(idx < 1) {
-        RDKPerf perf (__FUNCTION__, timeMS/2);
+        RDKPerf perf (__FUNCTION__, (static_cast<uint64_t>(timeMS) * 1000) / 2);
 
         do_work(timeMS);
 
@@ -106,6 +115,30 @@ void record_with_threshold(uint32_t timeMS)
     return;    
 }
 
+int test_no_cpu()
+{
+    static int nCount = 0;
+    RDKPerf perf(__FUNCTION__);
+    nCount++;
+    return nCount;
+}
+void perf_node_time_no_cpu()
+{
+    RDKPerf perf(__FUNCTION__);
+
+    int nIdx = 0;
+    while(nIdx < 100000) {
+        nIdx = test_no_cpu();
+    }
+    return;
+}
+
+void perf_node_time_with_cpu()
+{
+    RDKPerf perf(__FUNCTION__);
+    return;
+}
+
 // Unit Tests entry point
 #define DELAY_SHORT 2 * 1000 // 2s
 #define DELAY_LONG 10 * 1000 // 2s
@@ -113,6 +146,11 @@ void record_with_threshold(uint32_t timeMS)
 void unit_tests()
 {
     LOG(eWarning, "---------------------- Unit Tests START --------------------\n");
+
+    perf_node_time_no_cpu();
+    RDKPerf_ReportProcess(getpid());
+
+    perf_node_time_with_cpu();
 
     timer_sleep(DELAY_SHORT);
 
