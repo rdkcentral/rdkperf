@@ -141,7 +141,17 @@ public:
     }
 
     void Task() {
-        m_bContinue = true;
+
+        {
+            std::unique_lock<std::mutex> lck(m_mtx);
+            if (m_current_state == EXIT_LOOP) {
+                LOG(eWarning, " Early StopTask detected. Exiting loop before start.\n");
+                return;
+            }
+            m_bContinue = true;
+        }
+
+
         LOG(eWarning, "Task Started\n");
         while(m_bContinue == true) {
             if(!Loop()) {
