@@ -14,7 +14,7 @@ on:
         
 jobs:
   call_coverity_incremental_scan:
-    uses: rdk-e/build_tools_workflows/.github/workflows/coverity_component_incremental_scan.yml@develop
+    uses: rdk-e/build_tools_workflows/.github/workflows/coverity_component_incremental_scan.yml@main
     with:
       pullRequestNumber: ${{ github.event.inputs.pullRequestNumber || github.event.pull_request.number }}
       branchName: ${{ github.event.pull_request.base.ref }}

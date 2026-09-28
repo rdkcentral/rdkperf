@@ -7,7 +7,7 @@ on:
 
 jobs:
   call_coverity_full_scan:
-    uses: rdk-e/build_tools_workflows/.github/workflows/coverity_component_full_scan.yml@develop
+    uses: rdk-e/build_tools_workflows/.github/workflows/coverity_component_full_scan.yml@main
     with:
       branchName: ${{ github.ref_name }}
       # Specify your actual build command here
