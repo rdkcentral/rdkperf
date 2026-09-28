@@ -37,6 +37,8 @@ NAME = perftest
 
 SRC_DIRS = .
 
+.PHONY: quick-exit-test clean
+
 DIR_CREATE = @mkdir -p $(@D)
 
 # Find all the C and C++ files we want to compile
@@ -54,6 +56,9 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 
 $(BUILD_DIR)/$(NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LD_FLAGS) 
+
+quick-exit-test:
+	sh ./timer_quick_exit_test.sh "$(BUILD_DIR)"
 
 clean:
 	rm -f $(OBJS)
