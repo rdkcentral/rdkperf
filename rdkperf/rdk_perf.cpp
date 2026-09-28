@@ -29,6 +29,7 @@
 #include <ratio>
 #include <chrono>
 #include <condition_variable>
+#include <atomic>
 
 #include "rdk_perf_logging.h"
 #include "rdk_perf_scopedlock.h"
@@ -151,8 +152,7 @@ public:
             m_bContinue = true;
         }
 
-
-        LOG(eWarning, "RDKEMW-25809 : Task Started\n");
+        LOG(eWarning, "Task Starting\n");
         while(m_bContinue == true) {
             if(!Loop()) {
                 LOG(eWarning, "Timer loop signaled for Exit..\n");
@@ -163,6 +163,8 @@ public:
             SignalResult result = Wait(TIMER_INTERVAL_SECONDS);
             if(result == EXIT_LOOP) {
                 LOG(eWarning, "Exit task loop has been signaled\n");
+                m_bContinue = false;
+                break;
             }
         }
         LOG(eWarning, "Task Completed\n");
@@ -170,7 +172,7 @@ public:
     };
 private:
     void*       m_Context;
-    bool        m_bContinue; 
+    std::atomic<bool> m_bContinue;
     uint32_t    m_nDelay;
     uint32_t    m_nCount;
     // Timeout, signaling
