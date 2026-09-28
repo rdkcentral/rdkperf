@@ -111,7 +111,7 @@ public:
 
     void StopTask() {
         LOG(eWarning, "Stoping Timer Task\n");
-        m_bContinue = false;
+        m_bContinue.store(false);
         Signal(EXIT_LOOP);
         return;
     };
@@ -149,21 +149,21 @@ public:
                 LOG(eWarning, " Early StopTask detected. Exiting loop before start.\n");
                 return;
             }
-            m_bContinue = true;
+            m_bContinue.store(true);
         }
 
         LOG(eWarning, "Task Starting\n");
-        while(m_bContinue == true) {
+        while(m_bContinue.load() == true) {
             if(!Loop()) {
                 LOG(eWarning, "Timer loop signaled for Exit..\n");
-                m_bContinue = false;
+                m_bContinue.store(false);
                 break;
             }
             LOG(eTrace, "Task sleeping %d seconds\n", TIMER_INTERVAL_SECONDS);
             SignalResult result = Wait(TIMER_INTERVAL_SECONDS);
             if(result == EXIT_LOOP) {
                 LOG(eWarning, "Exit task loop has been signaled\n");
-                m_bContinue = false;
+                m_bContinue.store(false);
                 break;
             }
         }
