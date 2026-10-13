@@ -159,3 +159,8 @@ PerfClock* PerfClock::Now()
 
     return retVal;
 }
+
+const TimeStamp& PerfClock::GetTimeStamp() const
+{
+    return m_timeStamp;
+}
