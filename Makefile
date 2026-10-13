@@ -22,10 +22,15 @@ export BUILD_DIR = $(PWD)/build
 # Source sub directories, order is important.
 SUBDIRS = src rdkperf test service
 
+.PHONY: all clean quick-exit-test
+
 all:
 	@for i in $(SUBDIRS); do \
 	echo "make all in $$i..."; \
 	(cd $$i; $(MAKE) $(MFLAGS)); done
+
+quick-exit-test: all
+	$(MAKE) -C test quick-exit-test
  
 clean:
 	@for i in $(SUBDIRS); do \
